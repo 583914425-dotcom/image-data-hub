@@ -3,13 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Medical Imaging Research Database API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: patients
+    description: Patient record operations
+  - name: statistics
+    description: Statistical analysis
+  - name: imaging
+    description: Imaging data management
+  - name: radiomics
+    description: Radiomics feature analysis
 paths:
   /healthz:
     get:
@@ -24,6 +32,442 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /patients:
+    get:
+      operationId: listPatients
+      tags: [patients]
+      summary: List patients with pagination and filtering
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: figoStage2018
+          in: query
+          schema:
+            type: string
+        - name: pathologyType
+          in: query
+          schema:
+            type: integer
+        - name: treatmentOutcome
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Paginated list of patients
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientListResponse"
+    post:
+      operationId: createPatient
+      tags: [patients]
+      summary: Create a new patient record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePatientBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+
+  /patients/{id}:
+    get:
+      operationId: getPatient
+      tags: [patients]
+      summary: Get patient by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Patient record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "404":
+          description: Not found
+    patch:
+      operationId: updatePatient
+      tags: [patients]
+      summary: Update a patient record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePatientBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+    delete:
+      operationId: deletePatient
+      tags: [patients]
+      summary: Delete a patient record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /statistics/overview:
+    get:
+      operationId: getStatisticsOverview
+      tags: [statistics]
+      summary: Get dashboard overview statistics
+      responses:
+        "200":
+          description: Overview statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatisticsOverview"
+
+  /statistics/age-distribution:
+    get:
+      operationId: getAgeDistribution
+      tags: [statistics]
+      summary: Get age distribution data
+      responses:
+        "200":
+          description: Age distribution
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DistributionItem"
+
+  /statistics/stage-distribution:
+    get:
+      operationId: getStageDistribution
+      tags: [statistics]
+      summary: Get FIGO stage distribution
+      responses:
+        "200":
+          description: Stage distribution
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DistributionItem"
+
+  /statistics/pathology-distribution:
+    get:
+      operationId: getPathologyDistribution
+      tags: [statistics]
+      summary: Get pathology type distribution
+      responses:
+        "200":
+          description: Pathology distribution
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DistributionItem"
+
+  /statistics/treatment-outcome:
+    get:
+      operationId: getTreatmentOutcomeStats
+      tags: [statistics]
+      summary: Get treatment outcome statistics
+      responses:
+        "200":
+          description: Treatment outcome stats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DistributionItem"
+
+  /statistics/tumor-markers:
+    get:
+      operationId: getTumorMarkerStats
+      tags: [statistics]
+      summary: Get tumor marker statistics (SCC-Ag, CA125, CEA, CA199)
+      responses:
+        "200":
+          description: Tumor marker stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TumorMarkerStats"
+
+  /statistics/blood-indices:
+    get:
+      operationId: getBloodIndicesStats
+      tags: [statistics]
+      summary: Get blood index statistics (PLR, LMR, PNI, SII, PIV)
+      responses:
+        "200":
+          description: Blood index stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BloodIndicesStats"
+
+  /statistics/treatment-comparison:
+    get:
+      operationId: getTreatmentComparison
+      tags: [statistics]
+      summary: Get tumor size before/after treatment comparison
+      responses:
+        "200":
+          description: Treatment comparison data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TreatmentComparisonItem"
+
+  /statistics/lymph-node-metastasis:
+    get:
+      operationId: getLymphNodeMetastasis
+      tags: [statistics]
+      summary: Get lymph node metastasis distribution
+      responses:
+        "200":
+          description: Lymph node metastasis data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DistributionItem"
+
+  /imaging:
+    get:
+      operationId: listImagingRecords
+      tags: [imaging]
+      summary: List imaging records
+      parameters:
+        - name: patientId
+          in: query
+          schema:
+            type: integer
+        - name: modality
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of imaging records
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImagingListResponse"
+    post:
+      operationId: createImagingRecord
+      tags: [imaging]
+      summary: Create imaging record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateImagingBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImagingRecord"
+
+  /imaging/{id}:
+    get:
+      operationId: getImagingRecord
+      tags: [imaging]
+      summary: Get imaging record by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Imaging record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImagingRecord"
+    delete:
+      operationId: deleteImagingRecord
+      tags: [imaging]
+      summary: Delete imaging record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /radiomics/features:
+    get:
+      operationId: listRadiomicsFeatures
+      tags: [radiomics]
+      summary: List radiomics features for patients
+      parameters:
+        - name: patientId
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Radiomics features list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RadiomicsListResponse"
+    post:
+      operationId: createRadiomicsFeature
+      tags: [radiomics]
+      summary: Create radiomics feature record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRadiomicsBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RadiomicsFeature"
+
+  /radiomics/analysis:
+    post:
+      operationId: runRadiomicsAnalysis
+      tags: [radiomics]
+      summary: Run radiomics analysis on selected patients
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RadiomicsAnalysisRequest"
+      responses:
+        "200":
+          description: Analysis results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RadiomicsAnalysisResult"
+
+  /radiomics/correlation:
+    get:
+      operationId: getRadiomicsCorrelation
+      tags: [radiomics]
+      summary: Get feature correlation matrix
+      responses:
+        "200":
+          description: Correlation matrix
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CorrelationMatrix"
+
+  /patients/import:
+    post:
+      operationId: importPatients
+      tags: [patients]
+      summary: Bulk import patients from parsed data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                patients:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/CreatePatientBody"
+              required:
+                - patients
+      responses:
+        "201":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  imported:
+                    type: integer
+                  failed:
+                    type: integer
+                required:
+                  - imported
+                  - failed
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +478,720 @@ components:
       required:
         - status
 
+    Patient:
+      type: object
+      properties:
+        id:
+          type: integer
+        caseNumber:
+          type: string
+        sequenceNumber:
+          type: integer
+        patientName:
+          type: string
+        contactInfo:
+          type: ["string", "null"]
+        age:
+          type: integer
+        hypertension:
+          type: integer
+        diabetes:
+          type: integer
+        cardiovascular:
+          type: integer
+        otherComorbidities:
+          type: integer
+        pregnancyHistory:
+          type: ["string", "null"]
+        hpvStatus:
+          type: ["string", "null"]
+        preTreatmentTumorSizeCategory:
+          type: ["integer", "null"]
+        preTreatmentTumorSize:
+          type: ["number", "null"]
+        postTreatmentTumorSize:
+          type: ["number", "null"]
+        tumorSizeChange:
+          type: ["number", "null"]
+        preSccAg:
+          type: ["number", "null"]
+        postSccAg:
+          type: ["number", "null"]
+        preCa125:
+          type: ["number", "null"]
+        postCa125:
+          type: ["number", "null"]
+        preCea:
+          type: ["number", "null"]
+        postCea:
+          type: ["number", "null"]
+        preCa199:
+          type: ["number", "null"]
+        postCa199:
+          type: ["number", "null"]
+        plateletCount:
+          type: ["number", "null"]
+        lymphocyteCount:
+          type: ["number", "null"]
+        neutrophilCount:
+          type: ["number", "null"]
+        monocyteCount:
+          type: ["number", "null"]
+        serumAlbumin:
+          type: ["number", "null"]
+        plr:
+          type: ["number", "null"]
+        lmr:
+          type: ["number", "null"]
+        pni:
+          type: ["number", "null"]
+        sii:
+          type: ["number", "null"]
+        piv:
+          type: ["number", "null"]
+        preHemoglobin:
+          type: ["number", "null"]
+        figoStage2009:
+          type: ["string", "null"]
+        figoStage2018:
+          type: ["string", "null"]
+        pathologyType:
+          type: ["integer", "null"]
+        differentiation:
+          type: ["string", "null"]
+        parametrialInvasion:
+          type: ["string", "null"]
+        vaginalInvasion:
+          type: ["string", "null"]
+        pelvicLymphNodeMetastasis:
+          type: integer
+        inguinalLymphNodeMetastasis:
+          type: integer
+        commonIliacLymphNodeMetastasis:
+          type: integer
+        paraAorticLymphNodeMetastasis:
+          type: integer
+        supraclavicularLymphNodeMetastasis:
+          type: integer
+        radiationDose:
+          type: ["string", "null"]
+        brachytherapyDose:
+          type: ["string", "null"]
+        concurrentChemoCycles:
+          type: ["integer", "null"]
+        hyperthermia:
+          type: integer
+        immunotherapy:
+          type: integer
+        totalTreatmentDays:
+          type: ["integer", "null"]
+        os:
+          type: ["string", "null"]
+        pfs:
+          type: ["string", "null"]
+        treatmentOutcome:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - caseNumber
+        - sequenceNumber
+        - patientName
+        - age
+        - hypertension
+        - diabetes
+        - cardiovascular
+        - otherComorbidities
+        - pelvicLymphNodeMetastasis
+        - inguinalLymphNodeMetastasis
+        - commonIliacLymphNodeMetastasis
+        - paraAorticLymphNodeMetastasis
+        - supraclavicularLymphNodeMetastasis
+        - hyperthermia
+        - immunotherapy
+        - createdAt
+
+    CreatePatientBody:
+      type: object
+      properties:
+        caseNumber:
+          type: string
+        sequenceNumber:
+          type: integer
+        patientName:
+          type: string
+        contactInfo:
+          type: ["string", "null"]
+        age:
+          type: integer
+        hypertension:
+          type: integer
+        diabetes:
+          type: integer
+        cardiovascular:
+          type: integer
+        otherComorbidities:
+          type: integer
+        pregnancyHistory:
+          type: ["string", "null"]
+        hpvStatus:
+          type: ["string", "null"]
+        preTreatmentTumorSizeCategory:
+          type: ["integer", "null"]
+        preTreatmentTumorSize:
+          type: ["number", "null"]
+        postTreatmentTumorSize:
+          type: ["number", "null"]
+        tumorSizeChange:
+          type: ["number", "null"]
+        preSccAg:
+          type: ["number", "null"]
+        postSccAg:
+          type: ["number", "null"]
+        preCa125:
+          type: ["number", "null"]
+        postCa125:
+          type: ["number", "null"]
+        preCea:
+          type: ["number", "null"]
+        postCea:
+          type: ["number", "null"]
+        preCa199:
+          type: ["number", "null"]
+        postCa199:
+          type: ["number", "null"]
+        plateletCount:
+          type: ["number", "null"]
+        lymphocyteCount:
+          type: ["number", "null"]
+        neutrophilCount:
+          type: ["number", "null"]
+        monocyteCount:
+          type: ["number", "null"]
+        serumAlbumin:
+          type: ["number", "null"]
+        plr:
+          type: ["number", "null"]
+        lmr:
+          type: ["number", "null"]
+        pni:
+          type: ["number", "null"]
+        sii:
+          type: ["number", "null"]
+        piv:
+          type: ["number", "null"]
+        preHemoglobin:
+          type: ["number", "null"]
+        figoStage2009:
+          type: ["string", "null"]
+        figoStage2018:
+          type: ["string", "null"]
+        pathologyType:
+          type: ["integer", "null"]
+        differentiation:
+          type: ["string", "null"]
+        parametrialInvasion:
+          type: ["string", "null"]
+        vaginalInvasion:
+          type: ["string", "null"]
+        pelvicLymphNodeMetastasis:
+          type: integer
+        inguinalLymphNodeMetastasis:
+          type: integer
+        commonIliacLymphNodeMetastasis:
+          type: integer
+        paraAorticLymphNodeMetastasis:
+          type: integer
+        supraclavicularLymphNodeMetastasis:
+          type: integer
+        radiationDose:
+          type: ["string", "null"]
+        brachytherapyDose:
+          type: ["string", "null"]
+        concurrentChemoCycles:
+          type: ["integer", "null"]
+        hyperthermia:
+          type: integer
+        immunotherapy:
+          type: integer
+        totalTreatmentDays:
+          type: ["integer", "null"]
+        os:
+          type: ["string", "null"]
+        pfs:
+          type: ["string", "null"]
+        treatmentOutcome:
+          type: ["integer", "null"]
+      required:
+        - caseNumber
+        - sequenceNumber
+        - patientName
+        - age
+        - hypertension
+        - diabetes
+        - cardiovascular
+        - otherComorbidities
+        - pelvicLymphNodeMetastasis
+        - inguinalLymphNodeMetastasis
+        - commonIliacLymphNodeMetastasis
+        - paraAorticLymphNodeMetastasis
+        - supraclavicularLymphNodeMetastasis
+        - hyperthermia
+        - immunotherapy
+
+    UpdatePatientBody:
+      type: object
+      properties:
+        patientName:
+          type: string
+        contactInfo:
+          type: ["string", "null"]
+        age:
+          type: integer
+        hypertension:
+          type: integer
+        diabetes:
+          type: integer
+        cardiovascular:
+          type: integer
+        otherComorbidities:
+          type: integer
+        pregnancyHistory:
+          type: ["string", "null"]
+        hpvStatus:
+          type: ["string", "null"]
+        preTreatmentTumorSizeCategory:
+          type: ["integer", "null"]
+        preTreatmentTumorSize:
+          type: ["number", "null"]
+        postTreatmentTumorSize:
+          type: ["number", "null"]
+        tumorSizeChange:
+          type: ["number", "null"]
+        preSccAg:
+          type: ["number", "null"]
+        postSccAg:
+          type: ["number", "null"]
+        preCa125:
+          type: ["number", "null"]
+        postCa125:
+          type: ["number", "null"]
+        preCea:
+          type: ["number", "null"]
+        postCea:
+          type: ["number", "null"]
+        preCa199:
+          type: ["number", "null"]
+        postCa199:
+          type: ["number", "null"]
+        plateletCount:
+          type: ["number", "null"]
+        lymphocyteCount:
+          type: ["number", "null"]
+        neutrophilCount:
+          type: ["number", "null"]
+        monocyteCount:
+          type: ["number", "null"]
+        serumAlbumin:
+          type: ["number", "null"]
+        plr:
+          type: ["number", "null"]
+        lmr:
+          type: ["number", "null"]
+        pni:
+          type: ["number", "null"]
+        sii:
+          type: ["number", "null"]
+        piv:
+          type: ["number", "null"]
+        preHemoglobin:
+          type: ["number", "null"]
+        figoStage2009:
+          type: ["string", "null"]
+        figoStage2018:
+          type: ["string", "null"]
+        pathologyType:
+          type: ["integer", "null"]
+        differentiation:
+          type: ["string", "null"]
+        parametrialInvasion:
+          type: ["string", "null"]
+        vaginalInvasion:
+          type: ["string", "null"]
+        pelvicLymphNodeMetastasis:
+          type: integer
+        inguinalLymphNodeMetastasis:
+          type: integer
+        commonIliacLymphNodeMetastasis:
+          type: integer
+        paraAorticLymphNodeMetastasis:
+          type: integer
+        supraclavicularLymphNodeMetastasis:
+          type: integer
+        radiationDose:
+          type: ["string", "null"]
+        brachytherapyDose:
+          type: ["string", "null"]
+        concurrentChemoCycles:
+          type: ["integer", "null"]
+        hyperthermia:
+          type: integer
+        immunotherapy:
+          type: integer
+        totalTreatmentDays:
+          type: ["integer", "null"]
+        os:
+          type: ["string", "null"]
+        pfs:
+          type: ["string", "null"]
+        treatmentOutcome:
+          type: ["integer", "null"]
+
+    PatientListResponse:
+      type: object
+      properties:
+        patients:
+          type: array
+          items:
+            $ref: "#/components/schemas/Patient"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - patients
+        - total
+        - page
+        - totalPages
+
+    StatisticsOverview:
+      type: object
+      properties:
+        totalPatients:
+          type: integer
+        avgAge:
+          type: number
+        stageDistribution:
+          type: object
+          additionalProperties:
+            type: integer
+        outcomeRate:
+          type: number
+        avgTumorSizeChange:
+          type: number
+        comorbidityRate:
+          type: number
+      required:
+        - totalPatients
+        - avgAge
+        - stageDistribution
+        - outcomeRate
+        - avgTumorSizeChange
+        - comorbidityRate
+
+    DistributionItem:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: number
+      required:
+        - name
+        - value
+
+    TumorMarkerStats:
+      type: object
+      properties:
+        sccAg:
+          $ref: "#/components/schemas/MarkerStat"
+        ca125:
+          $ref: "#/components/schemas/MarkerStat"
+        cea:
+          $ref: "#/components/schemas/MarkerStat"
+        ca199:
+          $ref: "#/components/schemas/MarkerStat"
+      required:
+        - sccAg
+        - ca125
+        - cea
+        - ca199
+
+    MarkerStat:
+      type: object
+      properties:
+        preMean:
+          type: number
+        postMean:
+          type: number
+        preMedian:
+          type: number
+        postMedian:
+          type: number
+      required:
+        - preMean
+        - postMean
+        - preMedian
+        - postMedian
+
+    BloodIndicesStats:
+      type: object
+      properties:
+        plr:
+          $ref: "#/components/schemas/IndexStat"
+        lmr:
+          $ref: "#/components/schemas/IndexStat"
+        pni:
+          $ref: "#/components/schemas/IndexStat"
+        sii:
+          $ref: "#/components/schemas/IndexStat"
+        piv:
+          $ref: "#/components/schemas/IndexStat"
+      required:
+        - plr
+        - lmr
+        - pni
+        - sii
+        - piv
+
+    IndexStat:
+      type: object
+      properties:
+        mean:
+          type: number
+        median:
+          type: number
+        min:
+          type: number
+        max:
+          type: number
+      required:
+        - mean
+        - median
+        - min
+        - max
+
+    TreatmentComparisonItem:
+      type: object
+      properties:
+        stage:
+          type: string
+        preTreatmentAvg:
+          type: number
+        postTreatmentAvg:
+          type: number
+        changeAvg:
+          type: number
+      required:
+        - stage
+        - preTreatmentAvg
+        - postTreatmentAvg
+        - changeAvg
+
+    ImagingRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        patientId:
+          type: integer
+        patientName:
+          type: string
+        modality:
+          type: string
+        bodyPart:
+          type: string
+        studyDate:
+          type: string
+          format: date-time
+        description:
+          type: ["string", "null"]
+        findings:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - patientId
+        - patientName
+        - modality
+        - bodyPart
+        - studyDate
+        - createdAt
+
+    CreateImagingBody:
+      type: object
+      properties:
+        patientId:
+          type: integer
+        modality:
+          type: string
+        bodyPart:
+          type: string
+        studyDate:
+          type: string
+          format: date-time
+        description:
+          type: ["string", "null"]
+        findings:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+      required:
+        - patientId
+        - modality
+        - bodyPart
+        - studyDate
+
+    ImagingListResponse:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/ImagingRecord"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - records
+        - total
+        - page
+        - totalPages
+
+    RadiomicsFeature:
+      type: object
+      properties:
+        id:
+          type: integer
+        patientId:
+          type: integer
+        patientName:
+          type: string
+        featureClass:
+          type: string
+        featureName:
+          type: string
+        featureValue:
+          type: number
+        imagingId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - patientId
+        - patientName
+        - featureClass
+        - featureName
+        - featureValue
+        - createdAt
+
+    CreateRadiomicsBody:
+      type: object
+      properties:
+        patientId:
+          type: integer
+        featureClass:
+          type: string
+        featureName:
+          type: string
+        featureValue:
+          type: number
+        imagingId:
+          type: ["integer", "null"]
+      required:
+        - patientId
+        - featureClass
+        - featureName
+        - featureValue
+
+    RadiomicsListResponse:
+      type: object
+      properties:
+        features:
+          type: array
+          items:
+            $ref: "#/components/schemas/RadiomicsFeature"
+        total:
+          type: integer
+        page:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - features
+        - total
+        - page
+        - totalPages
+
+    RadiomicsAnalysisRequest:
+      type: object
+      properties:
+        patientIds:
+          type: array
+          items:
+            type: integer
+        featureClasses:
+          type: array
+          items:
+            type: string
+        analysisType:
+          type: string
+          enum: [correlation, pca, clustering, feature_importance]
+      required:
+        - analysisType
+
+    RadiomicsAnalysisResult:
+      type: object
+      properties:
+        analysisType:
+          type: string
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              values:
+                type: array
+                items:
+                  type: number
+            required:
+              - label
+              - values
+        summary:
+          type: string
+      required:
+        - analysisType
+        - results
+        - summary
+
+    CorrelationMatrix:
+      type: object
+      properties:
+        features:
+          type: array
+          items:
+            type: string
+        matrix:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+      required:
+        - features
+        - matrix
