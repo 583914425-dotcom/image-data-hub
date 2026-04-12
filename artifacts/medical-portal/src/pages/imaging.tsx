@@ -15,12 +15,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Image, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Image, ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 const IMAGING_YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025];
 
 export default function Imaging() {
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
   const [modalityFilter, setModalityFilter] = useState<string>("");
   const [yearFilter, setYearFilter] = useState<number | undefined>(undefined);
   const [addOpen, setAddOpen] = useState(false);
@@ -39,6 +40,7 @@ export default function Imaging() {
   const params = {
     page,
     limit: 20,
+    ...(search ? { patientName: search } : {}),
     ...(modalityFilter ? { modality: modalityFilter } : {}),
     ...(yearFilter ? { imagingYear: yearFilter } : {}),
   };
@@ -181,6 +183,17 @@ export default function Imaging() {
         <Card>
           <div className="p-4 border-b border-border">
             <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[180px] max-w-[260px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="搜索患者姓名..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                  className="pl-9"
+                  data-testid="input-search-imaging"
+                />
+              </div>
+
               <Select value={modalityFilter || "all"} onValueChange={(v) => { setModalityFilter(v === "all" ? "" : v); setPage(1); }}>
                 <SelectTrigger className="w-[140px]" data-testid="select-modality-filter">
                   <SelectValue placeholder="检查方式" />
@@ -235,7 +248,7 @@ export default function Imaging() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
-                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">ID</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">影像科编号</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">患者姓名</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">检查方式</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">检查部位</th>
@@ -249,7 +262,7 @@ export default function Imaging() {
                     <tbody>
                       {data?.records.map((r) => (
                         <tr key={r.id} className="border-b border-border/50 hover:bg-muted/40 transition-colors" data-testid={`row-imaging-${r.id}`}>
-                          <td className="py-3 px-3 text-muted-foreground">{r.id}</td>
+                          <td className="py-3 px-3 text-muted-foreground font-mono text-xs">{r.imagingDeptId ?? r.id}</td>
                           <td className="py-3 px-3 font-medium">{r.patientName}</td>
                           <td className="py-3 px-3">
                             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary">

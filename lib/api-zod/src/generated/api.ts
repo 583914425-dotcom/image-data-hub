@@ -506,6 +506,7 @@ export const ListImagingRecordsQueryParams = zod.object({
   patientId: zod.coerce.number().optional(),
   modality: zod.coerce.string().optional(),
   imagingYear: zod.coerce.number().optional(),
+  patientName: zod.coerce.string().optional(),
   page: zod.coerce.number().default(listImagingRecordsQueryPageDefault),
   limit: zod.coerce.number().default(listImagingRecordsQueryLimitDefault),
 });

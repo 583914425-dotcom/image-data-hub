@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, count } from "drizzle-orm";
+import { eq, and, count, ilike } from "drizzle-orm";
 import { db, imagingRecordsTable, patientsTable } from "@workspace/db";
 import {
   ListImagingRecordsQueryParams,
@@ -17,7 +17,7 @@ router.get("/imaging", async (req, res): Promise<void> => {
     return;
   }
 
-  const { page = 1, limit = 20, patientId, modality, imagingYear } = params.data;
+  const { page = 1, limit = 20, patientId, modality, imagingYear, patientName } = params.data;
   const offset = (page - 1) * limit;
 
   const conditions = [];
@@ -30,12 +30,16 @@ router.get("/imaging", async (req, res): Promise<void> => {
   if (imagingYear) {
     conditions.push(eq(imagingRecordsTable.imagingYear, imagingYear));
   }
+  if (patientName) {
+    conditions.push(ilike(patientsTable.patientName, `%${patientName}%`));
+  }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
   const [totalResult] = await db
     .select({ count: count() })
     .from(imagingRecordsTable)
+    .leftJoin(patientsTable, eq(imagingRecordsTable.patientId, patientsTable.id))
     .where(where);
 
   const total = totalResult?.count ?? 0;
