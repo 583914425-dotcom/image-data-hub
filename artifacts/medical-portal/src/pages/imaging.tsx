@@ -68,6 +68,7 @@ export default function Imaging() {
   const [maskUploadingId, setMaskUploadingId] = useState<number | null>(null);
   const [maskUploadProgress, setMaskUploadProgress] = useState<number>(0);
   const [viewingRecord, setViewingRecord] = useState<{ id: number; label: string } | null>(null);
+  const [extractingId, setExtractingId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const maskFileInputRef = useRef<HTMLInputElement>(null);
   const batchInputRef = useRef<HTMLInputElement>(null);
@@ -125,6 +126,23 @@ export default function Imaging() {
     maskUploadTargetRef.current = id;
     maskFileInputRef.current?.click();
   }, []);
+
+  const handleExtract = useCallback(async (id: number, label: string) => {
+    setExtractingId(id);
+    try {
+      const resp = await fetch(`/api/radiomics/extract/${id}`, { method: "POST" });
+      const data = await resp.json();
+      if (!resp.ok) {
+        toast({ title: "提取失败", description: data.error || "服务器错误", variant: "destructive" });
+      } else {
+        toast({ title: "特征提取成功", description: `${label} — 共提取 ${data.extracted} 个特征` });
+      }
+    } catch (e) {
+      toast({ title: "提取失败", description: String(e), variant: "destructive" });
+    } finally {
+      setExtractingId(null);
+    }
+  }, [toast]);
 
   const handleExportImaging = useCallback(async () => {
     toast({ title: "正在导出...", description: "正在获取全部影像数据" });
@@ -617,9 +635,27 @@ export default function Imaging() {
                             )}
                           </td>
                           <td className="py-3 px-3">
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} className="h-8 w-8 p-0 text-destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              {r.imageUrl && r.maskUrl && (
+                                extractingId === r.id ? (
+                                  <span className="inline-flex items-center gap-1 text-xs text-primary px-2">
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />提取中…
+                                  </span>
+                                ) : (
+                                  <Button
+                                    variant="ghost" size="sm"
+                                    onClick={() => handleExtract(r.id, formatRecordId(r.imagingYear, r.imagingDeptId, r.id))}
+                                    disabled={extractingId !== null}
+                                    className="h-7 px-2 text-xs text-teal-700 hover:text-teal-900 hover:bg-teal-50"
+                                  >
+                                    提取特征
+                                  </Button>
+                                )
+                              )}
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} className="h-8 w-8 p-0 text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}

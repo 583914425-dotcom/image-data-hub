@@ -1,11 +1,20 @@
 import { Router, type IRouter } from "express";
 import { eq, and, count, inArray } from "drizzle-orm";
-import { db, radiomicsFeaturesTable, patientsTable } from "@workspace/db";
+import { db, radiomicsFeaturesTable, patientsTable, imagingRecordsTable } from "@workspace/db";
 import {
   ListRadiomicsFeaturesQueryParams,
   CreateRadiomicsFeatureBody,
   RunRadiomicsAnalysisBody,
 } from "@workspace/api-zod";
+import { execFile } from "child_process";
+import { promisify } from "util";
+import { writeFile, unlink, mkdtemp } from "fs/promises";
+import { join } from "path";
+import { tmpdir } from "os";
+import { ObjectStorageService } from "../lib/objectStorage";
+
+const execFileAsync = promisify(execFile);
+const storageService = new ObjectStorageService();
 
 const router: IRouter = Router();
 
@@ -247,5 +256,109 @@ function computeCorrelation(x: number[], y: number[]): number {
   const den = Math.sqrt(denX * denY);
   return den === 0 ? 0 : num / den;
 }
+
+router.post("/radiomics/extract/:imagingId", async (req, res): Promise<void> => {
+  const imagingId = parseInt(req.params.imagingId);
+  if (isNaN(imagingId)) {
+    res.status(400).json({ error: "Invalid imaging ID" });
+    return;
+  }
+
+  const [record] = await db
+    .select()
+    .from(imagingRecordsTable)
+    .where(eq(imagingRecordsTable.id, imagingId));
+
+  if (!record) {
+    res.status(404).json({ error: "Imaging record not found" });
+    return;
+  }
+  if (!record.imageUrl) {
+    res.status(400).json({ error: "NIfTI file not uploaded for this record" });
+    return;
+  }
+  if (!record.maskUrl) {
+    res.status(400).json({ error: "Mask file not uploaded for this record" });
+    return;
+  }
+
+  const tmpDir = await mkdtemp(join(tmpdir(), "radiomics-"));
+  const imagePath = join(tmpDir, "image.nii.gz");
+  const maskPath = join(tmpDir, "mask.nii.gz");
+
+  try {
+    const [imageSignedUrl, maskSignedUrl] = await Promise.all([
+      storageService.getObjectEntityDownloadURL(record.imageUrl, 300),
+      storageService.getObjectEntityDownloadURL(record.maskUrl, 300),
+    ]);
+
+    const [imageResp, maskResp] = await Promise.all([
+      fetch(imageSignedUrl),
+      fetch(maskSignedUrl),
+    ]);
+
+    if (!imageResp.ok || !maskResp.ok) {
+      throw new Error("Failed to download files from storage");
+    }
+
+    const [imageBuffer, maskBuffer] = await Promise.all([
+      imageResp.arrayBuffer(),
+      maskResp.arrayBuffer(),
+    ]);
+
+    await Promise.all([
+      writeFile(imagePath, Buffer.from(imageBuffer)),
+      writeFile(maskPath, Buffer.from(maskBuffer)),
+    ]);
+
+    const scriptPath = join(process.cwd(), "extract_radiomics.py");
+    let stdout: string;
+    try {
+      ({ stdout } = await execFileAsync("python3.11", [scriptPath, imagePath, maskPath], {
+        timeout: 300_000,
+        maxBuffer: 50 * 1024 * 1024,
+      }));
+    } catch (err: unknown) {
+      const execErr = err as { stdout?: string; stderr?: string; message?: string };
+      const pyOutput = execErr.stdout?.trim() || execErr.stderr?.trim() || execErr.message || "Unknown Python error";
+      let pyMsg = pyOutput;
+      try {
+        const parsed = JSON.parse(execErr.stdout || "");
+        if (parsed.error) pyMsg = parsed.error;
+      } catch { /* not JSON */ }
+      res.status(500).json({ error: pyMsg });
+      return;
+    }
+
+    const parsed = JSON.parse(stdout);
+    if (parsed.error) {
+      res.status(500).json({ error: parsed.error });
+      return;
+    }
+
+    const features: { featureClass: string; featureName: string; featureValue: number }[] = parsed.features;
+
+    await db.delete(radiomicsFeaturesTable).where(eq(radiomicsFeaturesTable.imagingId, imagingId));
+
+    if (features.length > 0) {
+      const BATCH = 500;
+      for (let i = 0; i < features.length; i += BATCH) {
+        await db.insert(radiomicsFeaturesTable).values(
+          features.slice(i, i + BATCH).map((f) => ({
+            patientId: record.patientId,
+            imagingId,
+            featureClass: f.featureClass,
+            featureName: f.featureName,
+            featureValue: f.featureValue,
+          }))
+        );
+      }
+    }
+
+    res.json({ extracted: features.length, imagingId });
+  } finally {
+    await Promise.allSettled([unlink(imagePath), unlink(maskPath)]);
+  }
+});
 
 export default router;

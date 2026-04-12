@@ -32,6 +32,14 @@ The development PostgreSQL schema contains:
 
 The development database has anonymized sample records so dashboard, statistics, imaging, and radiomics views render immediately before real Excel imports are added.
 
+## Server-Side PyRadiomics
+
+PyRadiomics 3.0.1 is installed in `.pythonlibs` (Python 3.11). The extraction script lives at `artifacts/api-server/extract_radiomics.py`.
+
+- `POST /api/radiomics/extract/:imagingId` — downloads NIfTI + Mask from object storage to `/tmp`, runs PyRadiomics, saves 107 features (7 feature classes) to `radiomics_features`, returns `{extracted, imagingId}`.
+- The "提取特征" button appears in the imaging table for records that have both NIfTI and Mask files uploaded.
+- Settings: binWidth=25, geometryTolerance=1e-3 (needed for 2021_108 geometry mismatch).
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
