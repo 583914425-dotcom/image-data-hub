@@ -70,14 +70,25 @@ export default function Statistics() {
               <CardTitle className="text-base">年龄分布</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={280}>
                 <PieChart>
-                  <Pie data={ageDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} isAnimationActive={false} label={({ name, value }) => `${name}: ${value}`}>
+                  <Pie data={ageDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={80} isAnimationActive={false}
+                    label={({ cx, cy, midAngle, outerRadius, name, value, percent }) => {
+                      if (percent < 0.05) return null;
+                      const RADIAN = Math.PI / 180;
+                      const r = outerRadius + 22;
+                      const x = cx + r * Math.cos(-midAngle * RADIAN);
+                      const y = cy + r * Math.sin(-midAngle * RADIAN);
+                      return <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>{`${name}: ${value}`}</text>;
+                    }}
+                    labelLine={false}
+                  >
                     {(ageDist ?? []).map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip formatter={(v, n) => [v, n]} />
+                  <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
@@ -105,14 +116,25 @@ export default function Statistics() {
               <CardTitle className="text-base">病理类型分布</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={280}>
                 <PieChart>
-                  <Pie data={pathDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} isAnimationActive={false} label={({ name, value }) => `${name}: ${value}`}>
+                  <Pie data={pathDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={80} isAnimationActive={false}
+                    label={({ cx, cy, midAngle, outerRadius, name, value, percent }) => {
+                      if (percent < 0.05) return null;
+                      const RADIAN = Math.PI / 180;
+                      const r = outerRadius + 22;
+                      const x = cx + r * Math.cos(-midAngle * RADIAN);
+                      const y = cy + r * Math.sin(-midAngle * RADIAN);
+                      return <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>{`${name}: ${value}`}</text>;
+                    }}
+                    labelLine={false}
+                  >
                     {(pathDist ?? []).map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip formatter={(v, n) => [v, n]} />
+                  <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
@@ -123,14 +145,25 @@ export default function Statistics() {
               <CardTitle className="text-base">治疗结果分布</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height={280}>
                 <PieChart>
-                  <Pie data={outcomeDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} isAnimationActive={false} label={({ name, value }) => `${name}: ${value}`}>
+                  <Pie data={outcomeDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="45%" outerRadius={80} isAnimationActive={false}
+                    label={({ cx, cy, midAngle, outerRadius, name, value, percent }) => {
+                      if (percent < 0.05) return null;
+                      const RADIAN = Math.PI / 180;
+                      const r = outerRadius + 22;
+                      const x = cx + r * Math.cos(-midAngle * RADIAN);
+                      const y = cy + r * Math.sin(-midAngle * RADIAN);
+                      return <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>{`${name}: ${value}`}</text>;
+                    }}
+                    labelLine={false}
+                  >
                     {(outcomeDist ?? []).map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip formatter={(v, n) => [v, n]} />
+                  <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                 </PieChart>
               </ResponsiveContainer>
             </CardContent>
