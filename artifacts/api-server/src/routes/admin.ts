@@ -39,7 +39,12 @@ router.get("/admin/seed", async (req, res): Promise<void> => {
     return;
   }
 
-  await pool.query(sql);
+  const cleanSql = sql
+    .split("\n")
+    .filter((line) => !line.startsWith("\\"))
+    .join("\n");
+
+  await pool.query(cleanSql);
 
   const [{ value: after }] = await db.select({ value: count() }).from(patientsTable);
   res.json({ success: true, patients: Number(after) });
