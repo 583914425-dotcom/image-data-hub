@@ -181,54 +181,65 @@ export default function Imaging() {
     setBatchFiles(items);
   }, []);
 
+  const uploadOneFile = useCallback(async (item: BatchFile, idx: number) => {
+    setBatchFiles((prev) => prev.map((f, i) => i === idx ? { ...f, status: "uploading", progress: 0 } : f));
+    try {
+      const urlRes = await fetch("/api/storage/uploads/request-url", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: item.file.name, size: item.file.size, contentType: "application/gzip" }),
+      });
+      if (!urlRes.ok) throw new Error("获取上传地址失败");
+      const { uploadURL, objectPath } = await urlRes.json();
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            setBatchFiles((prev) => prev.map((f, i) => i === idx ? { ...f, progress: pct } : f));
+          }
+        };
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`HTTP ${xhr.status}`)));
+        xhr.onerror = () => reject(new Error("网络错误"));
+        xhr.open("PUT", uploadURL);
+        xhr.setRequestHeader("Content-Type", "application/gzip");
+        xhr.send(item.file);
+      });
+
+      await fetch(`/api/imaging/${item.recordId}/image-url`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: objectPath }),
+      });
+      setBatchFiles((prev) => prev.map((f, i) => i === idx ? { ...f, status: "done", progress: 100 } : f));
+    } catch (err) {
+      setBatchFiles((prev) => prev.map((f, i) => i === idx ? { ...f, status: "error", error: String(err) } : f));
+    }
+  }, []);
+
   const runBatchUpload = useCallback(async () => {
     if (batchRunning) return;
     setBatchRunning(true);
 
-    for (let i = 0; i < batchFiles.length; i++) {
-      const item = batchFiles[i];
-      if (item.status !== "pending") continue;
+    const pending = batchFiles
+      .map((f, idx) => ({ f, idx }))
+      .filter(({ f }) => f.status === "pending");
 
-      setBatchFiles((prev) => prev.map((f, idx) => idx === i ? { ...f, status: "uploading", progress: 0 } : f));
+    const CONCURRENCY = 3;
+    let cursor = 0;
 
-      try {
-        const urlRes = await fetch("/api/storage/uploads/request-url", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: item.file.name, size: item.file.size, contentType: "application/gzip" }),
-        });
-        if (!urlRes.ok) throw new Error("获取上传地址失败");
-        const { uploadURL, objectPath } = await urlRes.json();
-
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.upload.onprogress = (e) => {
-            if (e.lengthComputable) {
-              const pct = Math.round((e.loaded / e.total) * 100);
-              setBatchFiles((prev) => prev.map((f, idx) => idx === i ? { ...f, progress: pct } : f));
-            }
-          };
-          xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`HTTP ${xhr.status}`)));
-          xhr.onerror = () => reject(new Error("网络错误"));
-          xhr.open("PUT", uploadURL);
-          xhr.setRequestHeader("Content-Type", "application/gzip");
-          xhr.send(item.file);
-        });
-
-        await fetch(`/api/imaging/${item.recordId}/image-url`, {
-          method: "PATCH", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageUrl: objectPath }),
-        });
-
-        setBatchFiles((prev) => prev.map((f, idx) => idx === i ? { ...f, status: "done", progress: 100 } : f));
-      } catch (err) {
-        setBatchFiles((prev) => prev.map((f, idx) => idx === i ? { ...f, status: "error", error: String(err) } : f));
+    async function worker() {
+      while (cursor < pending.length) {
+        const { f, idx } = pending[cursor++];
+        await uploadOneFile(f, idx);
       }
     }
 
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
     setBatchRunning(false);
     queryClient.invalidateQueries({ queryKey: getListImagingRecordsQueryKey(params) });
-    toast({ title: "批量上传完成" });
-  }, [batchFiles, batchRunning, queryClient, params, toast]);
+    toast({ title: "批量上传完成 ✓", description: `已成功上传所有匹配文件` });
+  }, [batchFiles, batchRunning, uploadOneFile, queryClient, params, toast]);
 
   const batchMatched = batchFiles.filter((f) => f.status === "pending" || f.status === "uploading" || f.status === "done" || f.status === "error").length;
   const batchDone = batchFiles.filter((f) => f.status === "done").length;
@@ -246,7 +257,7 @@ export default function Imaging() {
             <p className="text-muted-foreground mt-1">影像检查数据的管理与查看</p>
           </div>
           <div className="flex gap-2">
-            <Dialog open={batchOpen} onOpenChange={(v) => { setBatchOpen(v); if (!v) { setBatchFiles([]); setBatchRunning(false); } }}>
+            <Dialog open={batchOpen} onOpenChange={(v) => { setBatchOpen(v); if (!v && !batchRunning) { setBatchFiles([]); } }}>
               <DialogTrigger asChild>
                 <Button variant="outline">
                   <FolderUp className="h-4 w-4 mr-2" />
@@ -329,19 +340,26 @@ export default function Imaging() {
                         ))}
                       </div>
 
-                      <Button
-                        className="w-full"
-                        onClick={runBatchUpload}
-                        disabled={batchRunning || batchMatched === 0 || batchDone === batchMatched}
-                      >
-                        {batchRunning ? (
-                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />上传中 {batchDone}/{batchMatched}...</>
-                        ) : batchDone === batchMatched && batchMatched > 0 ? (
-                          <><CheckCircle2 className="h-4 w-4 mr-2" />全部上传完成</>
-                        ) : (
-                          <><Upload className="h-4 w-4 mr-2" />开始上传 {batchMatched} 个文件</>
+                      <div className="flex gap-2">
+                        <Button
+                          className="flex-1"
+                          onClick={runBatchUpload}
+                          disabled={batchRunning || batchMatched === 0 || batchDone === batchMatched}
+                        >
+                          {batchRunning ? (
+                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />上传中 {batchDone}/{batchMatched}（3 并行）</>
+                          ) : batchDone === batchMatched && batchMatched > 0 ? (
+                            <><CheckCircle2 className="h-4 w-4 mr-2" />全部上传完成</>
+                          ) : (
+                            <><Upload className="h-4 w-4 mr-2" />开始上传 {batchMatched} 个文件</>
+                          )}
+                        </Button>
+                        {batchRunning && (
+                          <Button variant="outline" onClick={() => setBatchOpen(false)} title="最小化到后台，上传继续进行">
+                            最小化
+                          </Button>
                         )}
-                      </Button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -517,6 +535,39 @@ export default function Imaging() {
           </CardContent>
         </Card>
       </div>
+
+      {batchRunning && !batchOpen && (
+        <div
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-background border border-border shadow-lg rounded-xl px-4 py-3 cursor-pointer hover:border-primary transition-colors"
+          onClick={() => setBatchOpen(true)}
+        >
+          <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
+          <div className="min-w-[160px]">
+            <p className="text-sm font-medium leading-tight">后台上传中…</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{batchDone} / {batchMatched} 个文件完成</p>
+            <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-300"
+                style={{ width: `${batchMatched > 0 ? (batchDone / batchMatched) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+          <span className="text-xs text-primary font-medium shrink-0">展开</span>
+        </div>
+      )}
+
+      {!batchRunning && batchDone > 0 && !batchOpen && batchFiles.length > 0 && (
+        <div
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-background border border-green-500/40 shadow-lg rounded-xl px-4 py-3 cursor-pointer hover:border-green-500 transition-colors"
+          onClick={() => { setBatchFiles([]); }}
+        >
+          <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-green-700 leading-tight">上传完成</p>
+            <p className="text-xs text-muted-foreground mt-0.5">共 {batchDone} 个文件 · 点击关闭</p>
+          </div>
+        </div>
+      )}
 
       {viewingRecord && (
         <NiftiViewer
