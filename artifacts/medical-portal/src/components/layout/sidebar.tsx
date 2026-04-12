@@ -5,7 +5,7 @@ import {
   BarChart2, 
   Image as ImageIcon, 
   Activity,
-  Settings
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ const navigation = [
   { name: "首页", href: "/", icon: LayoutDashboard },
   { name: "数据管理", href: "/patients", icon: Users },
   { name: "统计分析", href: "/statistics", icon: BarChart2 },
+  { name: "治疗结果分析", href: "/survival", icon: TrendingUp },
   { name: "影像资料", href: "/imaging", icon: ImageIcon },
   { name: "影像组学", href: "/radiomics", icon: Activity },
 ];

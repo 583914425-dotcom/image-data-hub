@@ -143,6 +143,14 @@ router.delete("/patients/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
+router.get("/patients/export", async (_req, res): Promise<void> => {
+  const patients = await db
+    .select()
+    .from(patientsTable)
+    .orderBy(patientsTable.sequenceNumber);
+  res.json(patients);
+});
+
 router.post("/patients/import", async (req, res): Promise<void> => {
   const parsed = ImportPatientsBody.safeParse(req.body);
   if (!parsed.success) {

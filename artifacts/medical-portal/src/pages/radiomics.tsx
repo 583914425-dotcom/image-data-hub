@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import {
   useListRadiomicsFeatures,
@@ -16,12 +16,61 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Play, ChevronLeft, ChevronRight, Grid3X3, BarChart2, Brain } from "lucide-react";
+import { Plus, Play, ChevronLeft, ChevronRight, Grid3X3, BarChart2, Brain, Upload, FileText, Trash2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
+
+interface ParsedFeature {
+  imagingCode: string;
+  imagingId: number | null;
+  patientId: number | null;
+  featureClass: string;
+  featureName: string;
+  featureValue: number;
+}
+
+function parseFeatureColumn(colName: string): { featureClass: string; featureName: string } | null {
+  const m = colName.match(/^original_([a-zA-Z0-9]+)_(.+)$/);
+  if (!m) return null;
+  const classMap: Record<string, string> = {
+    shape: "Shape",
+    shape2d: "Shape",
+    firstorder: "FirstOrder",
+    glcm: "GLCM",
+    glrlm: "GLRLM",
+    glszm: "GLSZM",
+    gldm: "GLDM",
+    ngtdm: "NGTDM",
+  };
+  const featureClass = classMap[m[1].toLowerCase()] ?? m[1];
+  return { featureClass, featureName: m[2] };
+}
+
+function extractCodeFromPath(p: string): string {
+  const name = p.split("/").pop() ?? p;
+  return name.replace(/\.nii\.gz$/i, "").replace(/\.nii$/i, "");
+}
+
+async function parseCsv(text: string): Promise<{ headers: string[]; rows: Record<string, string>[] }> {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return { headers: [], rows: [] };
+  const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
+  const rows = lines.slice(1).map((line) => {
+    const vals = line.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
+    const row: Record<string, string> = {};
+    headers.forEach((h, i) => { row[h] = vals[i] ?? ""; });
+    return row;
+  });
+  return { headers, rows };
+}
 
 export default function Radiomics() {
   const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [csvParsed, setCsvParsed] = useState<ParsedFeature[]>([]);
+  const [csvFileName, setCsvFileName] = useState("");
+  const [importing, setImporting] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
   const [analysisType, setAnalysisType] = useState<string>("correlation");
   const [newFeature, setNewFeature] = useState({
     patientId: "",
@@ -38,6 +87,93 @@ export default function Radiomics() {
   const { data: correlation } = useGetRadiomicsCorrelation();
   const createMutation = useCreateRadiomicsFeature();
   const analysisMutation = useRunRadiomicsAnalysis();
+
+  const handleCsvFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvFileName(file.name);
+    const text = await file.text();
+    const { headers, rows } = await parseCsv(text);
+
+    const allImaging: Array<{
+      id: number; patientId: number; imagingYear: number | null; imagingDeptId: string | null;
+    }> = await fetch("/api/imaging/export").then((r) => r.json());
+
+    const codeToRecord = new Map<string, { id: number; patientId: number }>();
+    for (const rec of allImaging) {
+      if (rec.imagingYear && rec.imagingDeptId) {
+        codeToRecord.set(`${rec.imagingYear}_${rec.imagingDeptId}`, { id: rec.id, patientId: rec.patientId });
+      }
+    }
+
+    const imageCol = headers.find((h) => h.toLowerCase() === "image" || h.toLowerCase() === "image path");
+    const codeCol = headers.find((h) => ["编号", "imaging_code", "imaging_dept_id", "code"].includes(h.toLowerCase()));
+    const featureCols = headers.filter((h) => h.startsWith("original_"));
+
+    const features: ParsedFeature[] = [];
+    for (const row of rows) {
+      let code = "";
+      if (imageCol && row[imageCol]) {
+        code = extractCodeFromPath(row[imageCol]);
+      } else if (codeCol && row[codeCol]) {
+        code = row[codeCol];
+      }
+      if (!code) continue;
+      const match = codeToRecord.get(code);
+      for (const col of featureCols) {
+        const parsed = parseFeatureColumn(col);
+        if (!parsed) continue;
+        const val = parseFloat(row[col]);
+        if (isNaN(val)) continue;
+        features.push({
+          imagingCode: code,
+          imagingId: match?.id ?? null,
+          patientId: match?.patientId ?? null,
+          featureClass: parsed.featureClass,
+          featureName: parsed.featureName,
+          featureValue: val,
+        });
+      }
+    }
+    setCsvParsed(features);
+    e.target.value = "";
+  }, []);
+
+  const handleImportConfirm = useCallback(async () => {
+    if (csvParsed.length === 0) return;
+    const matched = csvParsed.filter((f) => f.patientId !== null);
+    if (matched.length === 0) {
+      toast({ title: "无法匹配", description: "没有找到匹配的影像记录，请检查影像编号格式", variant: "destructive" });
+      return;
+    }
+    setImporting(true);
+    try {
+      const resp = await fetch("/api/radiomics/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          features: matched.map((f) => ({
+            imagingId: f.imagingId,
+            patientId: f.patientId,
+            featureClass: f.featureClass,
+            featureName: f.featureName,
+            featureValue: f.featureValue,
+          })),
+        }),
+      });
+      if (!resp.ok) throw new Error("Import failed");
+      const result = await resp.json();
+      queryClient.invalidateQueries({ queryKey: getListRadiomicsFeaturesQueryKey({ page: 1, limit: 20 }) });
+      toast({ title: "导入成功", description: `已导入 ${result.inserted} 个特征值` });
+      setImportOpen(false);
+      setCsvParsed([]);
+      setCsvFileName("");
+    } catch {
+      toast({ title: "导入失败", variant: "destructive" });
+    } finally {
+      setImporting(false);
+    }
+  }, [csvParsed, queryClient, toast]);
 
   const handleCreate = useCallback(() => {
     if (!newFeature.patientId || !newFeature.featureName || !newFeature.featureValue) {
@@ -88,6 +224,99 @@ export default function Radiomics() {
             <h1 className="text-3xl font-bold tracking-tight text-foreground">影像组学</h1>
             <p className="text-muted-foreground mt-1">影像组学特征提取与分析</p>
           </div>
+          <div className="flex gap-2">
+          <input ref={csvInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvFile} />
+          <Dialog open={importOpen} onOpenChange={(v) => { setImportOpen(v); if (!v) { setCsvParsed([]); setCsvFileName(""); } }}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                批量导入 CSV
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle>批量导入影像组学特征</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
+                {csvParsed.length === 0 ? (
+                  <div>
+                    <div
+                      className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
+                      onClick={() => csvInputRef.current?.click()}
+                    >
+                      <FileText className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                      <p className="font-medium">点击选择 CSV 文件</p>
+                      <p className="text-sm text-muted-foreground mt-1">支持 PyRadiomics 批量输出格式</p>
+                    </div>
+                    <div className="mt-4 rounded-md bg-muted p-3 text-xs text-muted-foreground space-y-1">
+                      <p className="font-medium text-foreground">CSV 格式说明</p>
+                      <p>• PyRadiomics 输出格式：含 <code>Image</code> 列（文件路径）和 <code>original_*</code> 列</p>
+                      <p>• 或自定义格式：含 <code>imaging_code</code> 列（如 2019_101）和 <code>original_*</code> 列</p>
+                      <p>• 特征列命名规则：<code>{"original_{shape|firstorder|glcm|…}_{featureName}"}</code></p>
+                      <p>• 影像编号与数据库中已有的影像记录自动匹配（{"year_deptId"} 格式，如 2019_101）</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex-1 overflow-hidden flex flex-col space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{csvFileName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          共解析 {csvParsed.length} 个特征值，其中{" "}
+                          <span className="text-green-600 font-medium">{csvParsed.filter((f) => f.imagingId !== null).length}</span>{" "}
+                          个已匹配到影像记录
+                          {csvParsed.some((f) => f.imagingId === null) && (
+                            <span className="text-amber-600">
+                              ，{csvParsed.filter((f) => f.imagingId === null).length} 个未匹配
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => { setCsvParsed([]); setCsvFileName(""); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto border border-border rounded-md">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-muted">
+                          <tr>
+                            <th className="text-left py-2 px-3 font-medium">影像编号</th>
+                            <th className="text-left py-2 px-3 font-medium">特征类别</th>
+                            <th className="text-left py-2 px-3 font-medium">特征名称</th>
+                            <th className="text-right py-2 px-3 font-medium">特征值</th>
+                            <th className="text-center py-2 px-3 font-medium">状态</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {csvParsed.slice(0, 100).map((f, i) => (
+                            <tr key={i} className="border-t border-border/50">
+                              <td className="py-1.5 px-3 font-mono">{f.imagingCode}</td>
+                              <td className="py-1.5 px-3">{f.featureClass}</td>
+                              <td className="py-1.5 px-3 max-w-[150px] truncate">{f.featureName}</td>
+                              <td className="py-1.5 px-3 text-right font-mono">{f.featureValue.toFixed(4)}</td>
+                              <td className="py-1.5 px-3 text-center">
+                                {f.imagingId !== null ? (
+                                  <span className="text-green-600">✓</span>
+                                ) : (
+                                  <span className="text-amber-500">?</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                          {csvParsed.length > 100 && (
+                            <tr><td colSpan={5} className="py-2 px-3 text-center text-muted-foreground">... 仅显示前100条预览</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                    <Button onClick={handleImportConfirm} disabled={importing} className="w-full">
+                      {importing ? "导入中..." : `确认导入 ${csvParsed.filter((f) => f.imagingId !== null).length} 个特征值`}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-feature">
@@ -151,6 +380,7 @@ export default function Radiomics() {
               </div>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
         <Tabs defaultValue="features" className="space-y-6">

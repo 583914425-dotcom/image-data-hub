@@ -9,6 +9,7 @@ import PatientDetail from "@/pages/patient-detail";
 import Statistics from "@/pages/statistics";
 import Imaging from "@/pages/imaging";
 import Radiomics from "@/pages/radiomics";
+import Survival from "@/pages/survival";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/patients/:id" component={PatientDetail} />
       <Route path="/patients" component={Patients} />
       <Route path="/statistics" component={Statistics} />
+      <Route path="/survival" component={Survival} />
       <Route path="/imaging" component={Imaging} />
       <Route path="/radiomics" component={Radiomics} />
       <Route component={NotFound} />

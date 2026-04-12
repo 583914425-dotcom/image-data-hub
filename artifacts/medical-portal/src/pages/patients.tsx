@@ -149,9 +149,12 @@ export default function Patients() {
   }, [importMutation, queryClient, params, toast]);
 
   const handleExport = useCallback(async () => {
-    if (!data?.patients?.length) return;
+    toast({ title: "正在导出...", description: "正在获取全部患者数据" });
+    const resp = await fetch("/api/patients/export");
+    if (!resp.ok) { toast({ title: "导出失败", variant: "destructive" }); return; }
+    const allPatients = await resp.json();
     const XLSX = await import("xlsx");
-    const rows = data.patients.map((p) => ({
+    const rows = allPatients.map((p: Record<string, unknown>) => ({
       序号: p.sequenceNumber,
       病案号: p.caseNumber,
       姓名: p.patientName,
@@ -159,20 +162,48 @@ export default function Patients() {
       "FIGO分期(2018)": p.figoStage2018 ?? "",
       "FIGO分期(2009)": p.figoStage2009 ?? "",
       病理类型: p.pathologyType ?? "",
-      治疗结果: p.treatmentOutcome ?? "",
+      分化程度: p.differentiation ?? "",
+      宫旁侵犯: p.parametrialInvasion ?? "",
+      阴道侵犯: p.vaginalInvasion ?? "",
+      HPV状态: p.hpvStatus ?? "",
+      合并高血压: p.hypertension === 1 ? "是" : "否",
+      合并糖尿病: p.diabetes === 1 ? "是" : "否",
+      合并心血管疾病: p.cardiovascular === 1 ? "是" : "否",
       "治疗前肿瘤大小(cm)": p.preTreatmentTumorSize ?? "",
       "治疗后肿瘤大小(cm)": p.postTreatmentTumorSize ?? "",
+      "肿瘤变化(cm)": p.tumorSizeChange ?? "",
+      "肿瘤变化(%)": p.tumorSizeChangePct ?? "",
+      "SCC-Ag(治疗前)": p.preSccAg ?? "",
+      "SCC-Ag(治疗后)": p.postSccAg ?? "",
+      "CA125(治疗前)": p.preCa125 ?? "",
+      "CA125(治疗后)": p.postCa125 ?? "",
+      "CEA(治疗前)": p.preCea ?? "",
+      "CEA(治疗后)": p.postCea ?? "",
+      "CA199(治疗前)": p.preCa199 ?? "",
+      "CA199(治疗后)": p.postCa199 ?? "",
+      PLR: p.plr ?? "",
+      LMR: p.lmr ?? "",
+      PNI: p.pni ?? "",
+      SII: p.sii ?? "",
+      PIV: p.piv ?? "",
+      盆腔淋巴结转移: p.pelvicLymphNodeMetastasis === 1 ? "是" : "否",
+      腹股沟淋巴结转移: p.inguinalLymphNodeMetastasis === 1 ? "是" : "否",
+      腹主动脉旁淋巴结转移: p.paraAorticLymphNodeMetastasis === 1 ? "是" : "否",
+      放疗剂量: p.radiationDose ?? "",
+      同期化疗周期: p.concurrentChemoCycles ?? "",
       热疗: p.hyperthermia ?? "",
       免疫治疗: p.immunotherapy ?? "",
+      总治疗天数: p.totalTreatmentDays ?? "",
+      治疗结果: p.treatmentOutcome ?? "",
       OS: p.os ?? "",
       PFS: p.pfs ?? "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "患者列表");
-    XLSX.writeFile(wb, `患者列表_${new Date().toLocaleDateString("zh-CN").replace(/\//g, "-")}.xlsx`);
-    toast({ title: "导出成功", description: `已导出 ${rows.length} 条当前页记录` });
-  }, [data, toast]);
+    XLSX.writeFile(wb, `宫颈癌患者数据_${new Date().toLocaleDateString("zh-CN").replace(/\//g, "-")}.xlsx`);
+    toast({ title: "导出成功", description: `已导出全部 ${rows.length} 条患者记录` });
+  }, [toast]);
 
 
   return (
@@ -187,7 +218,6 @@ export default function Patients() {
             <Button
               variant="outline"
               onClick={handleExport}
-              disabled={!data?.patients?.length}
               data-testid="button-export"
             >
               <Download className="h-4 w-4 mr-2" />

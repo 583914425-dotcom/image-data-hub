@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus, Trash2, Image, ChevronLeft, ChevronRight,
-  Search, Upload, CheckCircle2, Loader2, XCircle, FolderUp, AlertCircle, Eye,
+  Search, Upload, CheckCircle2, Loader2, XCircle, FolderUp, AlertCircle, Eye, Download,
 } from "lucide-react";
 import { NiftiViewer } from "@/components/NiftiViewer";
 
@@ -125,6 +125,30 @@ export default function Imaging() {
     maskUploadTargetRef.current = id;
     maskFileInputRef.current?.click();
   }, []);
+
+  const handleExportImaging = useCallback(async () => {
+    toast({ title: "正在导出...", description: "正在获取全部影像数据" });
+    const resp = await fetch("/api/imaging/export");
+    if (!resp.ok) { toast({ title: "导出失败", variant: "destructive" }); return; }
+    const records = await resp.json();
+    const XLSX = await import("xlsx");
+    const rows = records.map((r: Record<string, unknown>) => ({
+      影像编号: r.imagingDeptId ? `${r.imagingYear}_${r.imagingDeptId}` : r.id,
+      患者姓名: r.patientName,
+      检查方式: r.modality,
+      检查部位: r.bodyPart,
+      影像年份: r.imagingYear,
+      "已上传NIfTI": r.hasNifti ? "是" : "否",
+      "已上传Mask": r.hasMask ? "是" : "否",
+      描述: r.description ?? "",
+      所见: r.findings ?? "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "影像列表");
+    XLSX.writeFile(wb, `影像资料_${new Date().toLocaleDateString("zh-CN").replace(/\//g, "-")}.xlsx`);
+    toast({ title: "导出成功", description: `已导出全部 ${rows.length} 条影像记录` });
+  }, [toast]);
 
   const handleMaskFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -306,6 +330,10 @@ export default function Imaging() {
             <p className="text-muted-foreground mt-1">影像检查数据的管理与查看</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportImaging}>
+              <Download className="h-4 w-4 mr-2" />
+              导出Excel
+            </Button>
             <Dialog open={batchOpen} onOpenChange={(v) => { setBatchOpen(v); if (!v && !batchRunning) { setBatchFiles([]); } }}>
               <DialogTrigger asChild>
                 <Button variant="outline">

@@ -259,4 +259,95 @@ router.get("/statistics/lymph-node-metastasis", async (_req, res): Promise<void>
   ]);
 });
 
+router.get("/statistics/outcome-by-stage", async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      stage: patientsTable.figoStage2018,
+      outcome: patientsTable.treatmentOutcome,
+      count: count(),
+    })
+    .from(patientsTable)
+    .where(sql`${patientsTable.treatmentOutcome} is not null and ${patientsTable.figoStage2018} is not null`)
+    .groupBy(patientsTable.figoStage2018, patientsTable.treatmentOutcome);
+
+  const stageMap: Record<string, Record<string, number>> = {};
+  for (const r of rows) {
+    const stage = r.stage ?? "Unknown";
+    if (!stageMap[stage]) stageMap[stage] = {};
+    stageMap[stage][r.outcome ?? "Unknown"] = Number(r.count);
+  }
+
+  const result = Object.entries(stageMap).map(([stage, outcomes]) => ({
+    stage,
+    PR: outcomes["PR"] ?? 0,
+    SD: outcomes["SD"] ?? 0,
+    PD: outcomes["PD"] ?? 0,
+    CR: outcomes["CR"] ?? 0,
+    total: Object.values(outcomes).reduce((a, b) => a + b, 0),
+  }));
+
+  result.sort((a, b) => a.stage.localeCompare(b.stage));
+  res.json(result);
+});
+
+router.get("/statistics/outcome-by-pathology", async (_req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      pathology: patientsTable.pathologyType,
+      outcome: patientsTable.treatmentOutcome,
+      count: count(),
+    })
+    .from(patientsTable)
+    .where(sql`${patientsTable.treatmentOutcome} is not null and ${patientsTable.pathologyType} is not null`)
+    .groupBy(patientsTable.pathologyType, patientsTable.treatmentOutcome);
+
+  const pathMap: Record<string, Record<string, number>> = {};
+  for (const r of rows) {
+    const path = r.pathology ?? "Unknown";
+    if (!pathMap[path]) pathMap[path] = {};
+    pathMap[path][r.outcome ?? "Unknown"] = Number(r.count);
+  }
+
+  const result = Object.entries(pathMap).map(([pathology, outcomes]) => ({
+    pathology,
+    PR: outcomes["PR"] ?? 0,
+    SD: outcomes["SD"] ?? 0,
+    PD: outcomes["PD"] ?? 0,
+    CR: outcomes["CR"] ?? 0,
+    total: Object.values(outcomes).reduce((a, b) => a + b, 0),
+  }));
+
+  result.sort((a, b) => b.total - a.total);
+  res.json(result);
+});
+
+router.get("/statistics/outcome-by-lymph", async (_req, res): Promise<void> => {
+  const [result] = await db
+    .select({
+      pelvicPos_PR: sql<number>`sum(case when ${patientsTable.pelvicLymphNodeMetastasis}=1 and ${patientsTable.treatmentOutcome}='PR' then 1 else 0 end)`,
+      pelvicPos_SD: sql<number>`sum(case when ${patientsTable.pelvicLymphNodeMetastasis}=1 and ${patientsTable.treatmentOutcome}='SD' then 1 else 0 end)`,
+      pelvicPos_PD: sql<number>`sum(case when ${patientsTable.pelvicLymphNodeMetastasis}=1 and ${patientsTable.treatmentOutcome}='PD' then 1 else 0 end)`,
+      pelvicNeg_PR: sql<number>`sum(case when ${patientsTable.pelvicLymphNodeMetastasis}=0 and ${patientsTable.treatmentOutcome}='PR' then 1 else 0 end)`,
+      pelvicNeg_SD: sql<number>`sum(case when ${patientsTable.pelvicLymphNodeMetastasis}=0 and ${patientsTable.treatmentOutcome}='SD' then 1 else 0 end)`,
+      pelvicNeg_PD: sql<number>`sum(case when ${patientsTable.pelvicLymphNodeMetastasis}=0 and ${patientsTable.treatmentOutcome}='PD' then 1 else 0 end)`,
+    })
+    .from(patientsTable)
+    .where(sql`${patientsTable.treatmentOutcome} is not null`);
+
+  res.json([
+    {
+      group: "盆腔淋巴结阳性",
+      PR: Number(result?.pelvicPos_PR ?? 0),
+      SD: Number(result?.pelvicPos_SD ?? 0),
+      PD: Number(result?.pelvicPos_PD ?? 0),
+    },
+    {
+      group: "盆腔淋巴结阴性",
+      PR: Number(result?.pelvicNeg_PR ?? 0),
+      SD: Number(result?.pelvicNeg_SD ?? 0),
+      PD: Number(result?.pelvicNeg_PD ?? 0),
+    },
+  ]);
+});
+
 export default router;

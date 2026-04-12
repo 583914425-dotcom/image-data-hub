@@ -81,6 +81,28 @@ router.get("/imaging", async (req, res): Promise<void> => {
   });
 });
 
+router.get("/imaging/export", async (_req, res): Promise<void> => {
+  const records = await db
+    .select({
+      id: imagingRecordsTable.id,
+      patientId: imagingRecordsTable.patientId,
+      patientName: patientsTable.patientName,
+      modality: imagingRecordsTable.modality,
+      bodyPart: imagingRecordsTable.bodyPart,
+      studyDate: imagingRecordsTable.studyDate,
+      imagingYear: imagingRecordsTable.imagingYear,
+      imagingDeptId: imagingRecordsTable.imagingDeptId,
+      hasNifti: sql<boolean>`${imagingRecordsTable.imageUrl} is not null`,
+      hasMask: sql<boolean>`${imagingRecordsTable.maskUrl} is not null`,
+      description: imagingRecordsTable.description,
+      findings: imagingRecordsTable.findings,
+    })
+    .from(imagingRecordsTable)
+    .leftJoin(patientsTable, eq(imagingRecordsTable.patientId, patientsTable.id))
+    .orderBy(imagingRecordsTable.imagingYear, imagingRecordsTable.imagingDeptId);
+  res.json(records.map((r) => ({ ...r, patientName: r.patientName ?? "" })));
+});
+
 router.post("/imaging", async (req, res): Promise<void> => {
   const parsed = CreateImagingRecordBody.safeParse(req.body);
   if (!parsed.success) {

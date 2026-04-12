@@ -169,6 +169,41 @@ router.post("/radiomics/analysis", async (req, res): Promise<void> => {
   res.json({ analysisType, results, summary });
 });
 
+router.post("/radiomics/import", async (req, res): Promise<void> => {
+  const body = req.body as {
+    features: Array<{
+      imagingId?: number | null;
+      patientId: number;
+      featureClass: string;
+      featureName: string;
+      featureValue: number;
+    }>;
+  };
+
+  if (!Array.isArray(body?.features) || body.features.length === 0) {
+    res.status(400).json({ error: "features array is required" });
+    return;
+  }
+
+  const rows = body.features.map((f) => ({
+    patientId: f.patientId,
+    imagingId: f.imagingId ?? null,
+    featureClass: f.featureClass,
+    featureName: f.featureName,
+    featureValue: f.featureValue,
+  }));
+
+  const BATCH = 500;
+  let inserted = 0;
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const chunk = rows.slice(i, i + BATCH);
+    await db.insert(radiomicsFeaturesTable).values(chunk);
+    inserted += chunk.length;
+  }
+
+  res.status(201).json({ inserted, total: rows.length });
+});
+
 router.get("/radiomics/correlation", async (_req, res): Promise<void> => {
   const features = await db.select().from(radiomicsFeaturesTable);
   const featureNames = [...new Set(features.map((f) => f.featureName))].slice(0, 10);
