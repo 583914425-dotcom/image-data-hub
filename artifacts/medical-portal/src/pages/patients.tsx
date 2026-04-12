@@ -108,7 +108,7 @@ export default function Patients() {
       preHemoglobin: parseNum(row["治疗前HbG（g/L）"]),
       figoStage2009: row["FIGO分期（2009）"] ? String(row["FIGO分期（2009）"]) : null,
       figoStage2018: row["FIGO分期（2018）"] ? String(row["FIGO分期（2018）"]) : null,
-      pathologyType: parseNum(row["病理类型"]) !== null ? parseInt(String(row["病理类型"])) : null,
+      pathologyType: row["病理类型"] && row["病理类型"] !== "/" ? String(row["病理类型"]) : null,
       differentiation: row["分化情况"] && row["分化情况"] !== "/" ? String(row["分化情况"]) : null,
       parametrialInvasion: row["宫旁浸润"] && row["宫旁浸润"] !== "/" ? String(row["宫旁浸润"]) : null,
       vaginalInvasion: row["阴道下段受侵"] && row["阴道下段受侵"] !== "/" ? String(row["阴道下段受侵"]) : null,
@@ -146,8 +146,6 @@ export default function Patients() {
     );
   }, [importMutation, queryClient, params, toast]);
 
-  const stageMap: Record<string, string> = { "1": "I期", "2": "II期", "3": "III期", "4": "IV期" };
-  const pathMap: Record<number, string> = { 0: "腺癌", 1: "鳞癌" };
   const outcomeMap: Record<number, string> = { 0: "未缓解", 1: "缓解" };
 
   return (
@@ -204,15 +202,21 @@ export default function Patients() {
                 />
               </div>
               <Select value={figoFilter} onValueChange={(v) => { setFigoFilter(v === "all" ? "" : v); setPage(1); }}>
-                <SelectTrigger className="w-[140px]" data-testid="select-figo">
+                <SelectTrigger className="w-[160px]" data-testid="select-figo">
                   <SelectValue placeholder="FIGO分期" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部分期</SelectItem>
-                  <SelectItem value="1">I期</SelectItem>
-                  <SelectItem value="2">II期</SelectItem>
-                  <SelectItem value="3">III期</SelectItem>
-                  <SelectItem value="4">IV期</SelectItem>
+                  <SelectItem value="IB3">IB3</SelectItem>
+                  <SelectItem value="IIA1">IIA1</SelectItem>
+                  <SelectItem value="IIA2">IIA2</SelectItem>
+                  <SelectItem value="IIB">IIB</SelectItem>
+                  <SelectItem value="IIIA">IIIA</SelectItem>
+                  <SelectItem value="IIIB">IIIB</SelectItem>
+                  <SelectItem value="IIIC1">IIIC1</SelectItem>
+                  <SelectItem value="IIIC2">IIIC2</SelectItem>
+                  <SelectItem value="IVA">IVA</SelectItem>
+                  <SelectItem value="IV">IV</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={outcomeFilter} onValueChange={(v) => { setOutcomeFilter(v === "all" ? "" : v); setPage(1); }}>
@@ -261,10 +265,10 @@ export default function Patients() {
                           <td className="py-3 px-2">{p.age}</td>
                           <td className="py-3 px-2">
                             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary">
-                              {stageMap[p.figoStage2018 ?? ""] ?? p.figoStage2018 ?? "-"}
+                              {p.figoStage2018 ?? "-"}
                             </span>
                           </td>
-                          <td className="py-3 px-2">{pathMap[p.pathologyType ?? -1] ?? "-"}</td>
+                          <td className="py-3 px-2">{p.pathologyType ?? "-"}</td>
                           <td className="py-3 px-2">{p.preTreatmentTumorSize?.toFixed(1) ?? "-"}</td>
                           <td className="py-3 px-2">{p.postTreatmentTumorSize?.toFixed(1) ?? "-"}</td>
                           <td className="py-3 px-2">

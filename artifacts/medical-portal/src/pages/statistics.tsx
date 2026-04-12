@@ -16,7 +16,11 @@ import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from "recharts";
 
-const COLORS = ['hsl(185, 81%, 29%)', 'hsl(200, 65%, 45%)', 'hsl(40, 85%, 55%)', 'hsl(340, 70%, 55%)', 'hsl(130, 50%, 45%)'];
+const COLORS = [
+  'hsl(185, 81%, 29%)', 'hsl(200, 65%, 45%)', 'hsl(40, 85%, 55%)',
+  'hsl(340, 70%, 55%)', 'hsl(130, 50%, 45%)', 'hsl(270, 60%, 55%)',
+  'hsl(20, 80%, 50%)', 'hsl(160, 55%, 40%)', 'hsl(60, 75%, 48%)', 'hsl(300, 55%, 52%)',
+];
 
 export default function Statistics() {
   const { data: ageDist } = useGetAgeDistribution();

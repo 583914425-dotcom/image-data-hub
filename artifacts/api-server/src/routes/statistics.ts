@@ -106,11 +106,6 @@ router.get("/statistics/stage-distribution", async (_req, res): Promise<void> =>
 });
 
 router.get("/statistics/pathology-distribution", async (_req, res): Promise<void> => {
-  const pathMap: Record<number, string> = {
-    0: "腺癌",
-    1: "鳞癌",
-  };
-
   const rows = await db
     .select({
       type: patientsTable.pathologyType,
@@ -121,7 +116,7 @@ router.get("/statistics/pathology-distribution", async (_req, res): Promise<void
 
   res.json(
     rows.map((r) => ({
-      name: pathMap[r.type ?? -1] ?? `Type ${r.type}`,
+      name: r.type ?? "未知",
       value: Number(r.count),
     }))
   );
@@ -226,13 +221,6 @@ router.get("/statistics/blood-indices", async (_req, res): Promise<void> => {
 });
 
 router.get("/statistics/treatment-comparison", async (_req, res): Promise<void> => {
-  const stageMap: Record<string, string> = {
-    "1": "I期",
-    "2": "II期",
-    "3": "III期",
-    "4": "IV期",
-  };
-
   const rows = await db
     .select({
       stage: patientsTable.figoStage2018,
@@ -247,7 +235,7 @@ router.get("/statistics/treatment-comparison", async (_req, res): Promise<void> 
 
   res.json(
     rows.map((r) => ({
-      stage: stageMap[r.stage ?? ""] ?? r.stage ?? "Unknown",
+      stage: r.stage ?? "Unknown",
       preTreatmentAvg: round(r.preAvg),
       postTreatmentAvg: round(r.postAvg),
       changeAvg: round(r.changeAvg),

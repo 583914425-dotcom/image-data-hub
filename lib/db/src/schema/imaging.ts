@@ -6,6 +6,9 @@ import { patientsTable } from "./patients";
 export const imagingRecordsTable = pgTable("imaging_records", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").notNull().references(() => patientsTable.id, { onDelete: "cascade" }),
+  imagingDeptId: text("imaging_dept_id"),
+  imagingYear: integer("imaging_year"),
+  sourceFile: text("source_file"),
   modality: text("modality").notNull(),
   bodyPart: text("body_part").notNull(),
   studyDate: timestamp("study_date", { withTimezone: true }).notNull(),
