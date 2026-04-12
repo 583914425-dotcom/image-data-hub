@@ -75,6 +75,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@niivue/niivue": "^0.68.1",
     "xlsx": "^0.18.5"
   }
 }

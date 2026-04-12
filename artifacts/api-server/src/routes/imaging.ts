@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, count, ilike } from "drizzle-orm";
 import { db, imagingRecordsTable, patientsTable } from "@workspace/db";
+import { ObjectStorageService } from "../lib/objectStorage";
 import {
   ListImagingRecordsQueryParams,
   CreateImagingRecordBody,
@@ -149,6 +150,24 @@ router.patch("/imaging/:id/image-url", async (req, res): Promise<void> => {
     return;
   }
   res.json(updated);
+});
+
+const storageService = new ObjectStorageService();
+
+router.get("/imaging/:id/view-url", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [record] = await db
+    .select({ imageUrl: imagingRecordsTable.imageUrl })
+    .from(imagingRecordsTable)
+    .where(eq(imagingRecordsTable.id, id));
+
+  if (!record) { res.status(404).json({ error: "Record not found" }); return; }
+  if (!record.imageUrl) { res.status(404).json({ error: "No file uploaded" }); return; }
+
+  const downloadUrl = await storageService.getObjectEntityDownloadURL(record.imageUrl);
+  res.json({ url: downloadUrl });
 });
 
 router.delete("/imaging/:id", async (req, res): Promise<void> => {

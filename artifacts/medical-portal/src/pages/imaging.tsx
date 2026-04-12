@@ -18,8 +18,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import {
   Plus, Trash2, Image, ChevronLeft, ChevronRight,
-  Search, Upload, CheckCircle2, Loader2, XCircle, FolderUp, AlertCircle,
+  Search, Upload, CheckCircle2, Loader2, XCircle, FolderUp, AlertCircle, Eye,
 } from "lucide-react";
+import { NiftiViewer } from "@/components/NiftiViewer";
 
 const IMAGING_YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025];
 
@@ -64,6 +65,7 @@ export default function Imaging() {
   });
   const [uploadingId, setUploadingId] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [viewingRecord, setViewingRecord] = useState<{ id: number; label: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const batchInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetRef = useRef<number | null>(null);
@@ -469,9 +471,18 @@ export default function Imaging() {
                           <td className="py-3 px-3 text-muted-foreground">{new Date(r.studyDate).toLocaleDateString("zh-CN")}</td>
                           <td className="py-3 px-3">
                             {r.imageUrl ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                                <CheckCircle2 className="h-3.5 w-3.5" />已上传
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />已上传
+                                </span>
+                                <Button
+                                  variant="ghost" size="sm"
+                                  onClick={() => setViewingRecord({ id: r.id, label: formatRecordId(r.imagingYear, r.imagingDeptId, r.id) })}
+                                  className="h-6 px-2 text-xs text-primary hover:text-primary/80"
+                                >
+                                  <Eye className="h-3.5 w-3.5 mr-1" />查看
+                                </Button>
+                              </div>
                             ) : uploadingId === r.id ? (
                               <span className="inline-flex items-center gap-1 text-xs text-primary">
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />{uploadProgress}%
@@ -506,6 +517,15 @@ export default function Imaging() {
           </CardContent>
         </Card>
       </div>
+
+      {viewingRecord && (
+        <NiftiViewer
+          recordId={viewingRecord.id}
+          label={viewingRecord.label}
+          open={!!viewingRecord}
+          onClose={() => setViewingRecord(null)}
+        />
+      )}
     </AppLayout>
   );
 }
