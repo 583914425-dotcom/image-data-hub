@@ -536,7 +536,14 @@ export default function Imaging() {
                               <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-accent text-accent-foreground">{r.imagingYear}</span>
                             ) : "-"}
                           </td>
-                          <td className="py-3 px-3 text-muted-foreground">{new Date(r.studyDate).toLocaleDateString("zh-CN")}</td>
+                          <td className="py-3 px-3 text-muted-foreground">
+                            {(() => {
+                              const d = new Date(r.studyDate);
+                              const isPlaceholder = d.getMonth() === 0 && d.getDate() === 1;
+                              if (isPlaceholder && r.imagingYear) return `${r.imagingYear} 年`;
+                              return d.toLocaleDateString("zh-CN");
+                            })()}
+                          </td>
                           <td className="py-3 px-3">
                             {r.imageUrl ? (
                               <div className="flex items-center gap-2">
