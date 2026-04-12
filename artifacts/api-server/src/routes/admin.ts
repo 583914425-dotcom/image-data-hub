@@ -8,7 +8,7 @@ const router: IRouter = Router();
 
 const SEED_TOKEN = "ccdb-seed-2024";
 
-router.post("/admin/seed", async (req, res): Promise<void> => {
+router.get("/admin/seed", async (req, res): Promise<void> => {
   if (req.query.token !== SEED_TOKEN) {
     res.status(401).json({ error: "Unauthorized" });
     return;
