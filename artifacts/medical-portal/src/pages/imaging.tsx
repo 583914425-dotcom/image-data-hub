@@ -7,7 +7,7 @@ import {
   getListImagingRecordsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,9 +17,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Image, ChevronLeft, ChevronRight } from "lucide-react";
 
+const IMAGING_YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025];
+
 export default function Imaging() {
   const [page, setPage] = useState(1);
   const [modalityFilter, setModalityFilter] = useState<string>("");
+  const [yearFilter, setYearFilter] = useState<number | undefined>(undefined);
   const [addOpen, setAddOpen] = useState(false);
   const [newRecord, setNewRecord] = useState({
     patientId: "",
@@ -37,6 +40,7 @@ export default function Imaging() {
     page,
     limit: 20,
     ...(modalityFilter ? { modality: modalityFilter } : {}),
+    ...(yearFilter ? { imagingYear: yearFilter } : {}),
   };
 
   const { data, isLoading } = useListImagingRecords(params);
@@ -175,10 +179,10 @@ export default function Imaging() {
         </div>
 
         <Card>
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-4">
+          <div className="p-4 border-b border-border">
+            <div className="flex flex-wrap items-center gap-3">
               <Select value={modalityFilter || "all"} onValueChange={(v) => { setModalityFilter(v === "all" ? "" : v); setPage(1); }}>
-                <SelectTrigger className="w-[160px]" data-testid="select-modality-filter">
+                <SelectTrigger className="w-[140px]" data-testid="select-modality-filter">
                   <SelectValue placeholder="检查方式" />
                 </SelectTrigger>
                 <SelectContent>
@@ -189,11 +193,30 @@ export default function Imaging() {
                   <SelectItem value="Ultrasound">超声</SelectItem>
                 </SelectContent>
               </Select>
+
+              <Select
+                value={yearFilter ? String(yearFilter) : "all"}
+                onValueChange={(v) => { setYearFilter(v === "all" ? undefined : parseInt(v)); setPage(1); }}
+              >
+                <SelectTrigger className="w-[130px]" data-testid="select-year-filter">
+                  <SelectValue placeholder="影像年份" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部年份</SelectItem>
+                  {IMAGING_YEARS.map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y} 年</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <p className="ml-auto text-sm text-muted-foreground">
+                {data ? `共 ${data.total} 条记录` : ""}
+              </p>
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <CardContent className="pt-0 px-0">
             {isLoading ? (
-              <div className="space-y-3">
+              <div className="space-y-3 p-4">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="h-12 bg-muted animate-pulse rounded" />
                 ))}
@@ -202,39 +225,49 @@ export default function Imaging() {
               <div className="text-center py-12 text-muted-foreground">
                 <Image className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium">暂无影像记录</p>
-                <p className="text-sm mt-1">点击"新增影像记录"开始添加</p>
+                <p className="text-sm mt-1">
+                  {yearFilter || modalityFilter ? "请尝试调整筛选条件" : '点击「新增影像记录」开始添加'}
+                </p>
               </div>
             ) : (
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left py-3 px-2 font-medium text-muted-foreground">ID</th>
-                        <th className="text-left py-3 px-2 font-medium text-muted-foreground">患者姓名</th>
-                        <th className="text-left py-3 px-2 font-medium text-muted-foreground">检查方式</th>
-                        <th className="text-left py-3 px-2 font-medium text-muted-foreground">检查部位</th>
-                        <th className="text-left py-3 px-2 font-medium text-muted-foreground">检查日期</th>
-                        <th className="text-left py-3 px-2 font-medium text-muted-foreground">描述</th>
-                        <th className="text-left py-3 px-2 font-medium text-muted-foreground">发现</th>
-                        <th className="text-left py-3 px-2 font-medium text-muted-foreground">操作</th>
+                      <tr className="border-b border-border bg-muted/30">
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">ID</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">患者姓名</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">检查方式</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">检查部位</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">影像年份</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">检查日期</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">描述</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">发现</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">操作</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data?.records.map((r) => (
-                        <tr key={r.id} className="border-b border-border/50 hover:bg-muted/50 transition-colors" data-testid={`row-imaging-${r.id}`}>
-                          <td className="py-3 px-2">{r.id}</td>
-                          <td className="py-3 px-2 font-medium">{r.patientName}</td>
-                          <td className="py-3 px-2">
-                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-accent text-accent-foreground">
+                        <tr key={r.id} className="border-b border-border/50 hover:bg-muted/40 transition-colors" data-testid={`row-imaging-${r.id}`}>
+                          <td className="py-3 px-3 text-muted-foreground">{r.id}</td>
+                          <td className="py-3 px-3 font-medium">{r.patientName}</td>
+                          <td className="py-3 px-3">
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary">
                               {r.modality}
                             </span>
                           </td>
-                          <td className="py-3 px-2">{r.bodyPart}</td>
-                          <td className="py-3 px-2">{new Date(r.studyDate).toLocaleDateString("zh-CN")}</td>
-                          <td className="py-3 px-2 max-w-[200px] truncate">{r.description ?? "-"}</td>
-                          <td className="py-3 px-2 max-w-[200px] truncate">{r.findings ?? "-"}</td>
-                          <td className="py-3 px-2">
+                          <td className="py-3 px-3">{r.bodyPart}</td>
+                          <td className="py-3 px-3">
+                            {r.imagingYear ? (
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-accent text-accent-foreground">
+                                {r.imagingYear}
+                              </span>
+                            ) : "-"}
+                          </td>
+                          <td className="py-3 px-3 text-muted-foreground">{new Date(r.studyDate).toLocaleDateString("zh-CN")}</td>
+                          <td className="py-3 px-3 max-w-[180px] truncate">{r.description ?? "-"}</td>
+                          <td className="py-3 px-3 max-w-[180px] truncate">{r.findings ?? "-"}</td>
+                          <td className="py-3 px-3">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -252,9 +285,9 @@ export default function Imaging() {
                 </div>
 
                 {data && (
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                  <div className="flex items-center justify-between px-4 py-3 border-t border-border">
                     <p className="text-sm text-muted-foreground">
-                      共 {data.total} 条记录，第 {data.page}/{data.totalPages} 页
+                      共 {data.total} 条，第 {data.page}/{data.totalPages} 页
                     </p>
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>

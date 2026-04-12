@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Patients from "@/pages/patients";
+import PatientDetail from "@/pages/patient-detail";
 import Statistics from "@/pages/statistics";
 import Imaging from "@/pages/imaging";
 import Radiomics from "@/pages/radiomics";
@@ -15,6 +16,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/patients/:id" component={PatientDetail} />
       <Route path="/patients" component={Patients} />
       <Route path="/statistics" component={Statistics} />
       <Route path="/imaging" component={Imaging} />

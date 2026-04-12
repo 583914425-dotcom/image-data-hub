@@ -9,6 +9,7 @@
 export type ListImagingRecordsParams = {
   patientId?: number;
   modality?: string;
+  imagingYear?: number;
   page?: number;
   limit?: number;
 };

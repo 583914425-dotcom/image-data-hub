@@ -505,6 +505,7 @@ export const listImagingRecordsQueryLimitDefault = 20;
 export const ListImagingRecordsQueryParams = zod.object({
   patientId: zod.coerce.number().optional(),
   modality: zod.coerce.string().optional(),
+  imagingYear: zod.coerce.number().optional(),
   page: zod.coerce.number().default(listImagingRecordsQueryPageDefault),
   limit: zod.coerce.number().default(listImagingRecordsQueryLimitDefault),
 });
@@ -521,6 +522,8 @@ export const ListImagingRecordsResponse = zod.object({
       description: zod.string().nullish(),
       findings: zod.string().nullish(),
       imageUrl: zod.string().nullish(),
+      imagingYear: zod.number().nullish(),
+      imagingDeptId: zod.string().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),

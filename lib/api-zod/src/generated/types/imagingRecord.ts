@@ -19,5 +19,9 @@ export interface ImagingRecord {
   findings?: string | null;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  imagingYear?: number | null;
+  /** @nullable */
+  imagingDeptId?: string | null;
   createdAt: Date;
 }

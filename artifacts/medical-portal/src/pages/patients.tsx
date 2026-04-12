@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useLocation } from "wouter";
 import { AppLayout } from "@/components/layout/app-layout";
 import {
   useListPatients,
@@ -16,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Upload, Trash2, Edit, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, Upload, Trash2, Edit, ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 export default function Patients() {
   const [page, setPage] = useState(1);
@@ -26,6 +27,7 @@ export default function Patients() {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
+  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -146,6 +148,32 @@ export default function Patients() {
     );
   }, [importMutation, queryClient, params, toast]);
 
+  const handleExport = useCallback(async () => {
+    if (!data?.patients?.length) return;
+    const XLSX = await import("xlsx");
+    const rows = data.patients.map((p) => ({
+      序号: p.sequenceNumber,
+      病案号: p.caseNumber,
+      姓名: p.patientName,
+      年龄: p.age,
+      "FIGO分期(2018)": p.figoStage2018 ?? "",
+      "FIGO分期(2009)": p.figoStage2009 ?? "",
+      病理类型: p.pathologyType ?? "",
+      治疗结果: p.treatmentOutcome ?? "",
+      "治疗前肿瘤大小(cm)": p.preTreatmentTumorSize ?? "",
+      "治疗后肿瘤大小(cm)": p.postTreatmentTumorSize ?? "",
+      热疗: p.hyperthermia ?? "",
+      免疫治疗: p.immunotherapy ?? "",
+      OS: p.os ?? "",
+      PFS: p.pfs ?? "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "患者列表");
+    XLSX.writeFile(wb, `患者列表_${new Date().toLocaleDateString("zh-CN").replace(/\//g, "-")}.xlsx`);
+    toast({ title: "导出成功", description: `已导出 ${rows.length} 条当前页记录` });
+  }, [data, toast]);
+
 
   return (
     <AppLayout>
@@ -156,6 +184,15 @@ export default function Patients() {
             <p className="text-muted-foreground mt-1">患者病例数据的查询、录入和管理</p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={!data?.patients?.length}
+              data-testid="button-export"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              导出Excel
+            </Button>
             <Dialog open={importOpen} onOpenChange={setImportOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" data-testid="button-import">
@@ -259,7 +296,7 @@ export default function Patients() {
                     </thead>
                     <tbody>
                       {data?.patients.map((p) => (
-                        <tr key={p.id} className="border-b border-border/50 hover:bg-muted/50 transition-colors" data-testid={`row-patient-${p.id}`}>
+                        <tr key={p.id} className="border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer" data-testid={`row-patient-${p.id}`} onClick={() => navigate(`/patients/${p.id}`)}>
                           <td className="py-3 px-2">{p.sequenceNumber}</td>
                           <td className="py-3 px-2 font-mono text-xs">{p.caseNumber}</td>
                           <td className="py-3 px-2 font-medium">{p.patientName}</td>
@@ -289,7 +326,7 @@ export default function Patients() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete(p.id)}
+                              onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
                               className="h-8 w-8 p-0 text-destructive"
                               data-testid={`button-delete-${p.id}`}
                             >

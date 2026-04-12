@@ -17,7 +17,7 @@ router.get("/imaging", async (req, res): Promise<void> => {
     return;
   }
 
-  const { page = 1, limit = 20, patientId, modality } = params.data;
+  const { page = 1, limit = 20, patientId, modality, imagingYear } = params.data;
   const offset = (page - 1) * limit;
 
   const conditions = [];
@@ -26,6 +26,9 @@ router.get("/imaging", async (req, res): Promise<void> => {
   }
   if (modality) {
     conditions.push(eq(imagingRecordsTable.modality, modality));
+  }
+  if (imagingYear) {
+    conditions.push(eq(imagingRecordsTable.imagingYear, imagingYear));
   }
 
   const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -49,12 +52,14 @@ router.get("/imaging", async (req, res): Promise<void> => {
       description: imagingRecordsTable.description,
       findings: imagingRecordsTable.findings,
       imageUrl: imagingRecordsTable.imageUrl,
+      imagingYear: imagingRecordsTable.imagingYear,
+      imagingDeptId: imagingRecordsTable.imagingDeptId,
       createdAt: imagingRecordsTable.createdAt,
     })
     .from(imagingRecordsTable)
     .leftJoin(patientsTable, eq(imagingRecordsTable.patientId, patientsTable.id))
     .where(where)
-    .orderBy(imagingRecordsTable.createdAt)
+    .orderBy(imagingRecordsTable.imagingYear, imagingRecordsTable.createdAt)
     .limit(limit)
     .offset(offset);
 
