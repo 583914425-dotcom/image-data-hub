@@ -598,8 +598,13 @@ export default function Imaging() {
                           </td>
                           <td className="py-3 px-3">
                             {r.maskUrl ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
-                                <CheckCircle2 className="h-3.5 w-3.5" />已上传
+                              <span className="inline-flex items-center gap-1">
+                                <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
+                                  <CheckCircle2 className="h-3.5 w-3.5" />已上传
+                                </span>
+                                <Button variant="ghost" size="sm" onClick={() => handleMaskUploadClick(r.id)} className="h-6 px-1.5 text-xs text-muted-foreground hover:text-red-500 ml-1">
+                                  替换
+                                </Button>
                               </span>
                             ) : maskUploadingId === r.id ? (
                               <span className="inline-flex items-center gap-1 text-xs text-primary">
