@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import {
   useListImagingRecords,
@@ -15,9 +15,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Image, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Plus, Trash2, Image, ChevronLeft, ChevronRight, Search, Upload, CheckCircle2, Loader2 } from "lucide-react";
 
 const IMAGING_YEARS = [2019, 2020, 2021, 2022, 2023, 2024, 2025];
+
+function formatRecordId(imagingYear?: number | null, imagingDeptId?: string | null, id?: number): string {
+  if (imagingYear && imagingDeptId) return `${imagingYear}_${imagingDeptId}`;
+  if (imagingDeptId) return imagingDeptId;
+  return String(id ?? "");
+}
 
 export default function Imaging() {
   const [page, setPage] = useState(1);
@@ -33,6 +39,10 @@ export default function Imaging() {
     description: "",
     findings: "",
   });
+  const [uploadingId, setUploadingId] = useState<number | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadTargetRef = useRef<number | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -91,9 +101,80 @@ export default function Imaging() {
     );
   }, [deleteMutation, queryClient, params, toast]);
 
+  const handleUploadClick = useCallback((id: number) => {
+    uploadTargetRef.current = id;
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const recordId = uploadTargetRef.current;
+    if (!file || !recordId) return;
+
+    e.target.value = "";
+
+    if (!file.name.endsWith(".nii.gz") && !file.name.endsWith(".nii")) {
+      toast({ title: "请选择 .nii.gz 或 .nii 格式文件", variant: "destructive" });
+      return;
+    }
+
+    setUploadingId(recordId);
+    setUploadProgress(0);
+
+    try {
+      const urlRes = await fetch("/api/storage/uploads/request-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: file.name,
+          size: file.size,
+          contentType: "application/gzip",
+        }),
+      });
+
+      if (!urlRes.ok) throw new Error("获取上传地址失败");
+      const { uploadURL, objectPath } = await urlRes.json();
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        };
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`上传失败 ${xhr.status}`)));
+        xhr.onerror = () => reject(new Error("网络错误"));
+        xhr.open("PUT", uploadURL);
+        xhr.setRequestHeader("Content-Type", "application/gzip");
+        xhr.send(file);
+      });
+
+      await fetch(`/api/imaging/${recordId}/image-url`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: objectPath }),
+      });
+
+      queryClient.invalidateQueries({ queryKey: getListImagingRecordsQueryKey(params) });
+      toast({ title: "NIfTI 文件上传成功", description: file.name });
+    } catch (err) {
+      toast({ title: "上传失败", description: String(err), variant: "destructive" });
+    } finally {
+      setUploadingId(null);
+      setUploadProgress(0);
+      uploadTargetRef.current = null;
+    }
+  }, [queryClient, params, toast]);
+
   return (
     <AppLayout>
       <div className="p-8 max-w-full mx-auto space-y-6">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".nii.gz,.nii"
+          className="hidden"
+          onChange={handleFileSelected}
+        />
+
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">影像资料</h1>
@@ -239,7 +320,7 @@ export default function Imaging() {
                 <Image className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium">暂无影像记录</p>
                 <p className="text-sm mt-1">
-                  {yearFilter || modalityFilter ? "请尝试调整筛选条件" : '点击「新增影像记录」开始添加'}
+                  {yearFilter || modalityFilter || search ? "请尝试调整筛选条件" : '点击「新增影像记录」开始添加'}
                 </p>
               </div>
             ) : (
@@ -248,21 +329,22 @@ export default function Imaging() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
-                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">影像科编号</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">影像编号</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">患者姓名</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">检查方式</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">检查部位</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">影像年份</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">检查日期</th>
-                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">描述</th>
-                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">发现</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">NIfTI 文件</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">操作</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data?.records.map((r) => (
                         <tr key={r.id} className="border-b border-border/50 hover:bg-muted/40 transition-colors" data-testid={`row-imaging-${r.id}`}>
-                          <td className="py-3 px-3 text-muted-foreground font-mono text-xs">{r.imagingDeptId ?? r.id}</td>
+                          <td className="py-3 px-3 font-mono text-xs font-medium text-primary">
+                            {formatRecordId(r.imagingYear, r.imagingDeptId, r.id)}
+                          </td>
                           <td className="py-3 px-3 font-medium">{r.patientName}</td>
                           <td className="py-3 px-3">
                             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary">
@@ -278,8 +360,30 @@ export default function Imaging() {
                             ) : "-"}
                           </td>
                           <td className="py-3 px-3 text-muted-foreground">{new Date(r.studyDate).toLocaleDateString("zh-CN")}</td>
-                          <td className="py-3 px-3 max-w-[180px] truncate">{r.description ?? "-"}</td>
-                          <td className="py-3 px-3 max-w-[180px] truncate">{r.findings ?? "-"}</td>
+                          <td className="py-3 px-3">
+                            {r.imageUrl ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                已上传
+                              </span>
+                            ) : uploadingId === r.id ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-primary">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                {uploadProgress}%
+                              </span>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleUploadClick(r.id)}
+                                className="h-7 px-2 text-xs text-muted-foreground hover:text-primary"
+                                data-testid={`button-upload-${r.id}`}
+                              >
+                                <Upload className="h-3.5 w-3.5 mr-1" />
+                                上传
+                              </Button>
+                            )}
+                          </td>
                           <td className="py-3 px-3">
                             <Button
                               variant="ghost"

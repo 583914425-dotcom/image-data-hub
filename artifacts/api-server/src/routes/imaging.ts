@@ -6,6 +6,8 @@ import {
   CreateImagingRecordBody,
   GetImagingRecordParams,
   DeleteImagingRecordParams,
+  UpdateImagingImageUrlBody,
+  UpdateImagingImageUrlParams,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -122,6 +124,31 @@ router.get("/imaging/:id", async (req, res): Promise<void> => {
   }
 
   res.json({ ...records[0], patientName: records[0].patientName ?? "" });
+});
+
+router.patch("/imaging/:id/image-url", async (req, res): Promise<void> => {
+  const params = UpdateImagingImageUrlParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const body = UpdateImagingImageUrlBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [updated] = await db
+    .update(imagingRecordsTable)
+    .set({ imageUrl: body.data.imageUrl })
+    .where(eq(imagingRecordsTable.id, params.data.id))
+    .returning({ id: imagingRecordsTable.id, imageUrl: imagingRecordsTable.imageUrl });
+
+  if (!updated) {
+    res.status(404).json({ error: "Record not found" });
+    return;
+  }
+  res.json(updated);
 });
 
 router.delete("/imaging/:id", async (req, res): Promise<void> => {

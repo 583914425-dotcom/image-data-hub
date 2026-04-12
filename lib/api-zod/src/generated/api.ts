@@ -710,3 +710,28 @@ export const ImportPatientsBody = zod.object({
     }),
   ),
 });
+
+/**
+ * Storage upload schemas
+ */
+export const RequestUploadUrlBody = zod.object({
+  name: zod.string(),
+  size: zod.number(),
+  contentType: zod.string(),
+});
+
+export const RequestUploadUrlResponse = zod.object({
+  uploadURL: zod.string(),
+  objectPath: zod.string(),
+});
+
+/**
+ * Imaging image URL update schemas
+ */
+export const UpdateImagingImageUrlBody = zod.object({
+  imageUrl: zod.string().nullable(),
+});
+
+export const UpdateImagingImageUrlParams = zod.object({
+  id: zod.coerce.number(),
+});
