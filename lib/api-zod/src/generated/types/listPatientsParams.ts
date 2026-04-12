@@ -11,6 +11,6 @@ export type ListPatientsParams = {
   limit?: number;
   search?: string;
   figoStage2018?: string;
-  pathologyType?: number;
-  treatmentOutcome?: number;
+  pathologyType?: string;
+  treatmentOutcome?: string;
 };

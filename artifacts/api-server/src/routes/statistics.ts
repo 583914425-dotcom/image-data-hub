@@ -28,7 +28,7 @@ router.get("/statistics/overview", async (_req, res): Promise<void> => {
 
   const [outcomeResult] = await db
     .select({
-      good: sql<number>`count(case when ${patientsTable.treatmentOutcome} = 1 then 1 end)`,
+      good: sql<number>`count(case when ${patientsTable.treatmentOutcome} in ('PR', 'CR') then 1 end)`,
       total: count(),
     })
     .from(patientsTable);
@@ -123,22 +123,18 @@ router.get("/statistics/pathology-distribution", async (_req, res): Promise<void
 });
 
 router.get("/statistics/treatment-outcome", async (_req, res): Promise<void> => {
-  const outcomeMap: Record<number, string> = {
-    0: "未缓解",
-    1: "缓解",
-  };
-
   const rows = await db
     .select({
       outcome: patientsTable.treatmentOutcome,
       count: count(),
     })
     .from(patientsTable)
+    .where(sql`${patientsTable.treatmentOutcome} is not null`)
     .groupBy(patientsTable.treatmentOutcome);
 
   res.json(
     rows.map((r) => ({
-      name: outcomeMap[r.outcome ?? -1] ?? `Outcome ${r.outcome}`,
+      name: r.outcome ?? "未知",
       value: Number(r.count),
     }))
   );

@@ -34,7 +34,7 @@ export default function Patients() {
     limit: 20,
     ...(search ? { search } : {}),
     ...(figoFilter ? { figoStage2018: figoFilter } : {}),
-    ...(outcomeFilter ? { treatmentOutcome: parseInt(outcomeFilter) } : {}),
+    ...(outcomeFilter ? { treatmentOutcome: outcomeFilter } : {}),
   };
 
   const { data, isLoading } = useListPatients(params);
@@ -146,7 +146,6 @@ export default function Patients() {
     );
   }, [importMutation, queryClient, params, toast]);
 
-  const outcomeMap: Record<number, string> = { 0: "未缓解", 1: "缓解" };
 
   return (
     <AppLayout>
@@ -225,8 +224,10 @@ export default function Patients() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部结果</SelectItem>
-                  <SelectItem value="0">未缓解</SelectItem>
-                  <SelectItem value="1">缓解</SelectItem>
+                  <SelectItem value="PR">PR（部分缓解）</SelectItem>
+                  <SelectItem value="CR">CR（完全缓解）</SelectItem>
+                  <SelectItem value="SD">SD（稳定）</SelectItem>
+                  <SelectItem value="PD">PD（进展）</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -272,11 +273,17 @@ export default function Patients() {
                           <td className="py-3 px-2">{p.preTreatmentTumorSize?.toFixed(1) ?? "-"}</td>
                           <td className="py-3 px-2">{p.postTreatmentTumorSize?.toFixed(1) ?? "-"}</td>
                           <td className="py-3 px-2">
-                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                              p.treatmentOutcome === 1 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                            }`}>
-                              {outcomeMap[p.treatmentOutcome ?? -1] ?? "-"}
-                            </span>
+                            {p.treatmentOutcome ? (
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                p.treatmentOutcome === "CR" ? "bg-green-100 text-green-700" :
+                                p.treatmentOutcome === "PR" ? "bg-blue-100 text-blue-700" :
+                                p.treatmentOutcome === "SD" ? "bg-yellow-100 text-yellow-700" :
+                                p.treatmentOutcome === "PD" ? "bg-red-100 text-red-700" :
+                                "bg-muted text-muted-foreground"
+                              }`}>
+                                {p.treatmentOutcome}
+                              </span>
+                            ) : <span className="text-muted-foreground">-</span>}
                           </td>
                           <td className="py-3 px-2">
                             <Button

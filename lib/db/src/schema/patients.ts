@@ -64,7 +64,7 @@ export const patientsTable = pgTable("patients", {
   postLymphNodeStatus: text("post_lymph_node_status"),
   os: text("os"),
   pfs: text("pfs"),
-  treatmentOutcome: integer("treatment_outcome"),
+  treatmentOutcome: text("treatment_outcome"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

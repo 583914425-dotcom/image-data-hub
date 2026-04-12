@@ -73,7 +73,7 @@ export interface Patient {
   /** @nullable */
   figoStage2018?: string | null;
   /** @nullable */
-  pathologyType?: number | null;
+  pathologyType?: string | null;
   /** @nullable */
   differentiation?: string | null;
   /** @nullable */
@@ -91,8 +91,10 @@ export interface Patient {
   brachytherapyDose?: string | null;
   /** @nullable */
   concurrentChemoCycles?: number | null;
-  hyperthermia: number;
-  immunotherapy: number;
+  /** @nullable */
+  hyperthermia?: string | null;
+  /** @nullable */
+  immunotherapy?: string | null;
   /** @nullable */
   totalTreatmentDays?: number | null;
   /** @nullable */
@@ -100,6 +102,6 @@ export interface Patient {
   /** @nullable */
   pfs?: string | null;
   /** @nullable */
-  treatmentOutcome?: number | null;
+  treatmentOutcome?: string | null;
   createdAt: Date;
 }
