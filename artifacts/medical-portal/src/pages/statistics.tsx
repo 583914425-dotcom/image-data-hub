@@ -79,7 +79,7 @@ export default function Statistics() {
                       const r = outerRadius + 22;
                       const x = cx + r * Math.cos(-midAngle * RADIAN);
                       const y = cy + r * Math.sin(-midAngle * RADIAN);
-                      return <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>{`${name}: ${value}`}</text>;
+                      return <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>{`${name}: ${value} (${(percent * 100).toFixed(1)}%)`}</text>;
                     }}
                     labelLine={false}
                   >
@@ -125,7 +125,7 @@ export default function Statistics() {
                       const r = outerRadius + 22;
                       const x = cx + r * Math.cos(-midAngle * RADIAN);
                       const y = cy + r * Math.sin(-midAngle * RADIAN);
-                      return <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>{`${name}: ${value}`}</text>;
+                      return <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>{`${name}: ${value} (${(percent * 100).toFixed(1)}%)`}</text>;
                     }}
                     labelLine={false}
                   >
@@ -154,7 +154,7 @@ export default function Statistics() {
                       const r = outerRadius + 22;
                       const x = cx + r * Math.cos(-midAngle * RADIAN);
                       const y = cy + r * Math.sin(-midAngle * RADIAN);
-                      return <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>{`${name}: ${value}`}</text>;
+                      return <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>{`${name}: ${value} (${(percent * 100).toFixed(1)}%)`}</text>;
                     }}
                     labelLine={false}
                   >
