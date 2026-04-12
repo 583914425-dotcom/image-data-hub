@@ -523,6 +523,7 @@ export const ListImagingRecordsResponse = zod.object({
       description: zod.string().nullish(),
       findings: zod.string().nullish(),
       imageUrl: zod.string().nullish(),
+      maskUrl: zod.string().nullish(),
       imagingYear: zod.number().nullish(),
       imagingDeptId: zod.string().nullish(),
       createdAt: zod.coerce.date(),
@@ -733,5 +734,13 @@ export const UpdateImagingImageUrlBody = zod.object({
 });
 
 export const UpdateImagingImageUrlParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateImagingMaskUrlBody = zod.object({
+  maskUrl: zod.string().nullable(),
+});
+
+export const UpdateImagingMaskUrlParams = zod.object({
   id: zod.coerce.number(),
 });

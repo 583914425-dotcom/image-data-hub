@@ -9,6 +9,8 @@ import {
   DeleteImagingRecordParams,
   UpdateImagingImageUrlBody,
   UpdateImagingImageUrlParams,
+  UpdateImagingMaskUrlBody,
+  UpdateImagingMaskUrlParams,
 } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -59,6 +61,7 @@ router.get("/imaging", async (req, res): Promise<void> => {
       description: imagingRecordsTable.description,
       findings: imagingRecordsTable.findings,
       imageUrl: imagingRecordsTable.imageUrl,
+      maskUrl: imagingRecordsTable.maskUrl,
       imagingYear: imagingRecordsTable.imagingYear,
       imagingDeptId: imagingRecordsTable.imagingDeptId,
       createdAt: imagingRecordsTable.createdAt,
@@ -152,6 +155,21 @@ router.patch("/imaging/:id/image-url", async (req, res): Promise<void> => {
   res.json(updated);
 });
 
+router.patch("/imaging/:id/mask-url", async (req, res): Promise<void> => {
+  const params = UpdateImagingMaskUrlParams.safeParse(req.params);
+  const body = UpdateImagingMaskUrlBody.safeParse(req.body);
+  if (!params.success || !body.success) { res.status(400).json({ error: "Invalid request" }); return; }
+
+  const [updated] = await db
+    .update(imagingRecordsTable)
+    .set({ maskUrl: body.data.maskUrl })
+    .where(eq(imagingRecordsTable.id, params.data.id))
+    .returning({ id: imagingRecordsTable.id, maskUrl: imagingRecordsTable.maskUrl });
+
+  if (!updated) { res.status(404).json({ error: "Record not found" }); return; }
+  res.json(updated);
+});
+
 const storageService = new ObjectStorageService();
 
 router.get("/imaging/:id/view-url", async (req, res): Promise<void> => {
@@ -159,15 +177,18 @@ router.get("/imaging/:id/view-url", async (req, res): Promise<void> => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [record] = await db
-    .select({ imageUrl: imagingRecordsTable.imageUrl })
+    .select({ imageUrl: imagingRecordsTable.imageUrl, maskUrl: imagingRecordsTable.maskUrl })
     .from(imagingRecordsTable)
     .where(eq(imagingRecordsTable.id, id));
 
   if (!record) { res.status(404).json({ error: "Record not found" }); return; }
   if (!record.imageUrl) { res.status(404).json({ error: "No file uploaded" }); return; }
 
-  const downloadUrl = await storageService.getObjectEntityDownloadURL(record.imageUrl);
-  res.json({ url: downloadUrl });
+  const url = await storageService.getObjectEntityDownloadURL(record.imageUrl);
+  const maskUrlSigned = record.maskUrl
+    ? await storageService.getObjectEntityDownloadURL(record.maskUrl)
+    : null;
+  res.json({ url, maskUrl: maskUrlSigned });
 });
 
 router.delete("/imaging/:id", async (req, res): Promise<void> => {

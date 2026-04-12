@@ -65,10 +65,14 @@ export default function Imaging() {
   });
   const [uploadingId, setUploadingId] = useState<number | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [maskUploadingId, setMaskUploadingId] = useState<number | null>(null);
+  const [maskUploadProgress, setMaskUploadProgress] = useState<number>(0);
   const [viewingRecord, setViewingRecord] = useState<{ id: number; label: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const maskFileInputRef = useRef<HTMLInputElement>(null);
   const batchInputRef = useRef<HTMLInputElement>(null);
   const uploadTargetRef = useRef<number | null>(null);
+  const maskUploadTargetRef = useRef<number | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -116,6 +120,50 @@ export default function Imaging() {
     uploadTargetRef.current = id;
     fileInputRef.current?.click();
   }, []);
+
+  const handleMaskUploadClick = useCallback((id: number) => {
+    maskUploadTargetRef.current = id;
+    maskFileInputRef.current?.click();
+  }, []);
+
+  const handleMaskFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const recordId = maskUploadTargetRef.current;
+    if (!file || !recordId) return;
+    e.target.value = "";
+    if (!file.name.endsWith(".nii.gz") && !file.name.endsWith(".nii")) {
+      toast({ title: "请选择 .nii.gz 或 .nii 格式文件", variant: "destructive" });
+      return;
+    }
+    setMaskUploadingId(recordId);
+    setMaskUploadProgress(0);
+    try {
+      const urlRes = await fetch("/api/storage/uploads/request-url", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: file.name, size: file.size, contentType: "application/gzip" }),
+      });
+      if (!urlRes.ok) throw new Error("获取上传地址失败");
+      const { uploadURL, objectPath } = await urlRes.json();
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = (ev) => { if (ev.lengthComputable) setMaskUploadProgress(Math.round((ev.loaded / ev.total) * 100)); };
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`上传失败 ${xhr.status}`)));
+        xhr.onerror = () => reject(new Error("网络错误"));
+        xhr.open("PUT", uploadURL);
+        xhr.setRequestHeader("Content-Type", "application/gzip");
+        xhr.send(file);
+      });
+      await fetch(`/api/imaging/${recordId}/mask-url`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ maskUrl: objectPath }) });
+      queryClient.invalidateQueries({ queryKey: getListImagingRecordsQueryKey(params) });
+      toast({ title: "Mask 文件上传成功", description: file.name });
+    } catch (err) {
+      toast({ title: "上传失败", description: String(err), variant: "destructive" });
+    } finally {
+      setMaskUploadingId(null);
+      setMaskUploadProgress(0);
+      maskUploadTargetRef.current = null;
+    }
+  }, [queryClient, params, toast]);
 
   const handleFileSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -249,6 +297,7 @@ export default function Imaging() {
     <AppLayout>
       <div className="p-8 max-w-full mx-auto space-y-6">
         <input ref={fileInputRef} type="file" accept=".nii.gz,.nii" className="hidden" onChange={handleFileSelected} />
+        <input ref={maskFileInputRef} type="file" accept=".nii.gz,.nii" className="hidden" onChange={handleMaskFileSelected} />
         <input ref={batchInputRef} type="file" accept=".nii.gz,.nii" multiple className="hidden" onChange={handleBatchFilesSelected} />
 
         <div className="flex items-center justify-between">
@@ -467,6 +516,7 @@ export default function Imaging() {
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">影像年份</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">检查日期</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">NIfTI 文件</th>
+                        <th className="text-left py-3 px-3 font-medium text-muted-foreground">Mask 勾画</th>
                         <th className="text-left py-3 px-3 font-medium text-muted-foreground">操作</th>
                       </tr>
                     </thead>
@@ -507,6 +557,21 @@ export default function Imaging() {
                               </span>
                             ) : (
                               <Button variant="ghost" size="sm" onClick={() => handleUploadClick(r.id)} className="h-7 px-2 text-xs text-muted-foreground hover:text-primary">
+                                <Upload className="h-3.5 w-3.5 mr-1" />上传
+                              </Button>
+                            )}
+                          </td>
+                          <td className="py-3 px-3">
+                            {r.maskUrl ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium">
+                                <CheckCircle2 className="h-3.5 w-3.5" />已上传
+                              </span>
+                            ) : maskUploadingId === r.id ? (
+                              <span className="inline-flex items-center gap-1 text-xs text-primary">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />{maskUploadProgress}%
+                              </span>
+                            ) : (
+                              <Button variant="ghost" size="sm" onClick={() => handleMaskUploadClick(r.id)} className="h-7 px-2 text-xs text-muted-foreground hover:text-red-500">
                                 <Upload className="h-3.5 w-3.5 mr-1" />上传
                               </Button>
                             )}

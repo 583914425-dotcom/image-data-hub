@@ -369,6 +369,8 @@ export interface ImagingRecord {
   findings?: string | null;
   /** @nullable */
   imageUrl?: string | null;
+  /** @nullable */
+  maskUrl?: string | null;
   createdAt: string;
 }
 

@@ -15,6 +15,7 @@ export const imagingRecordsTable = pgTable("imaging_records", {
   description: text("description"),
   findings: text("findings"),
   imageUrl: text("image_url"),
+  maskUrl: text("mask_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
