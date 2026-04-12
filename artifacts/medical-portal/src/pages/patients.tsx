@@ -258,7 +258,7 @@ export default function Patients() {
                           <td className="py-3 px-2">{p.sequenceNumber}</td>
                           <td className="py-3 px-2 font-mono text-xs">{p.caseNumber}</td>
                           <td className="py-3 px-2 font-medium">{p.patientName}</td>
-                          <td className="py-3 px-2">{p.age === 0 ? "<=40" : ">40"}</td>
+                          <td className="py-3 px-2">{p.age}</td>
                           <td className="py-3 px-2">
                             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary">
                               {stageMap[p.figoStage2018 ?? ""] ?? p.figoStage2018 ?? "-"}

@@ -65,20 +65,20 @@ router.get("/statistics/age-distribution", async (_req, res): Promise<void> => {
   const rows = await db
     .select({
       ageGroup: sql<string>`case 
-        when ${patientsTable.age} = 0 then '<=40'
-        when ${patientsTable.age} = 1 then '>40'
+        when ${patientsTable.age} <= 40 then '<=40'
+        when ${patientsTable.age} > 40 then '>40'
         else 'Unknown'
       end`,
       count: count(),
     })
     .from(patientsTable)
     .groupBy(sql`case 
-      when ${patientsTable.age} = 0 then '<=40'
-      when ${patientsTable.age} = 1 then '>40'
+      when ${patientsTable.age} <= 40 then '<=40'
+      when ${patientsTable.age} > 40 then '>40'
       else 'Unknown'
     end`);
 
-  res.json(rows.map((r) => ({ name: r.ageGroup, value: r.count })));
+  res.json(rows.map((r) => ({ name: r.ageGroup, value: Number(r.count) })));
 });
 
 router.get("/statistics/stage-distribution", async (_req, res): Promise<void> => {
@@ -100,7 +100,7 @@ router.get("/statistics/stage-distribution", async (_req, res): Promise<void> =>
   res.json(
     rows.map((r) => ({
       name: stageMap[r.stage ?? ""] ?? r.stage ?? "Unknown",
-      value: r.count,
+      value: Number(r.count),
     }))
   );
 });
@@ -122,7 +122,7 @@ router.get("/statistics/pathology-distribution", async (_req, res): Promise<void
   res.json(
     rows.map((r) => ({
       name: pathMap[r.type ?? -1] ?? `Type ${r.type}`,
-      value: r.count,
+      value: Number(r.count),
     }))
   );
 });
@@ -144,7 +144,7 @@ router.get("/statistics/treatment-outcome", async (_req, res): Promise<void> => 
   res.json(
     rows.map((r) => ({
       name: outcomeMap[r.outcome ?? -1] ?? `Outcome ${r.outcome}`,
-      value: r.count,
+      value: Number(r.count),
     }))
   );
 });

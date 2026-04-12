@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Users, Activity, AlertCircle, RefreshCw, Layers } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 
-const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+const COLORS = ['hsl(185, 81%, 29%)', 'hsl(200, 65%, 45%)', 'hsl(40, 85%, 55%)', 'hsl(340, 70%, 55%)', 'hsl(130, 50%, 45%)'];
 
 export default function Dashboard() {
   const { data: overview, isLoading: overviewLoading } = useGetStatisticsOverview();
@@ -119,6 +119,7 @@ export default function Dashboard() {
                       outerRadius={80}
                       paddingAngle={5}
                       dataKey="value"
+                      isAnimationActive={false}
                     >
                       {ageDist.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

@@ -68,7 +68,7 @@ export default function Statistics() {
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
-                  <Pie data={ageDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, value }) => `${name}: ${value}`}>
+                  <Pie data={ageDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} isAnimationActive={false} label={({ name, value }) => `${name}: ${value}`}>
                     {(ageDist ?? []).map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
@@ -103,7 +103,7 @@ export default function Statistics() {
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
-                  <Pie data={pathDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, value }) => `${name}: ${value}`}>
+                  <Pie data={pathDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} isAnimationActive={false} label={({ name, value }) => `${name}: ${value}`}>
                     {(pathDist ?? []).map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
@@ -121,7 +121,7 @@ export default function Statistics() {
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
-                  <Pie data={outcomeDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, value }) => `${name}: ${value}`}>
+                  <Pie data={outcomeDist ?? []} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} isAnimationActive={false} label={({ name, value }) => `${name}: ${value}`}>
                     {(outcomeDist ?? []).map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}

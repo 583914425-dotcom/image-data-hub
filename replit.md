@@ -2,7 +2,7 @@
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+pnpm workspace monorepo using TypeScript. The main product is a medical imaging research portal for cervical cancer clinical, imaging, statistics, and radiomics data management.
 
 ## Stack
 
@@ -14,7 +14,23 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+- **Build**: esbuild for API, Vite for web
+
+## Artifacts
+
+- `artifacts/medical-portal`: React/Vite web UI at `/`
+- `artifacts/api-server`: Express API at `/api`
+- `artifacts/mockup-sandbox`: canvas component preview environment
+
+## Database
+
+The development PostgreSQL schema contains:
+
+- `patients`
+- `imaging_records`
+- `radiomics_features`
+
+The development database has anonymized sample records so dashboard, statistics, imaging, and radiomics views render immediately before real Excel imports are added.
 
 ## Key Commands
 
