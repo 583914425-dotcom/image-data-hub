@@ -29,18 +29,21 @@ function formatRecordId(imagingYear?: number | null, imagingDeptId?: string | nu
   return String(id ?? "");
 }
 
-function parseNiftiFilename(filename: string): { year: number; deptId: string } | null {
+function parseNiftiFilename(filename: string): { year: number; deptId: string; display: string } | null {
   const base = filename.replace(/\.nii\.gz$/, "").replace(/\.nii$/, "");
-  const match = base.match(/^(\d{4})_(\d+)$/);
+  const match = base.match(/^(\d{4})_([A-Za-z]*)(\d+)$/);
   if (!match) return null;
-  return { year: parseInt(match[1]), deptId: match[2] };
+  const year = parseInt(match[1]);
+  const display = `${match[2]}${match[3]}`;
+  const deptId = match[3];
+  return { year, deptId, display };
 }
 
 type FileStatus = "pending" | "uploading" | "done" | "error" | "unmatched";
 
 interface BatchFile {
   file: File;
-  parsed: { year: number; deptId: string } | null;
+  parsed: { year: number; deptId: string; display: string } | null;
   recordId: number | null;
   status: FileStatus;
   progress: number;
@@ -170,7 +173,7 @@ export default function Imaging() {
       const key = parsed ? `${parsed.year}_${parsed.deptId}` : null;
       const recordId = key ? (recordMap.get(key) ?? null) : null;
       const status: FileStatus = parsed && recordId ? "pending" : "unmatched";
-      return { file, parsed, recordId, status, progress: 0 };
+      return { file, parsed: parsed ? { year: parsed.year, deptId: parsed.deptId, display: parsed.display } : null, recordId, status, progress: 0 };
     });
 
     setBatchFiles(items);
@@ -305,7 +308,7 @@ export default function Imaging() {
                             <span className="font-mono text-xs flex-1 truncate">{f.file.name}</span>
                             {f.parsed && (
                               <span className="text-xs text-primary shrink-0">
-                                {f.parsed.year}_{f.parsed.deptId}
+                                {f.parsed.year}_{f.parsed.display}
                               </span>
                             )}
                             {f.status === "uploading" && (
