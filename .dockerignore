@@ -1,0 +1,10 @@
+node_modules
+**/node_modules
+.git
+.gitignore
+dist
+**/dist
+data
+.replit
+.replitignore
+image-data-hub-main.zip

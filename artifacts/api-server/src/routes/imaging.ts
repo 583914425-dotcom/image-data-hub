@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, count, ilike } from "drizzle-orm";
+import { eq, and, count, ilike, sql } from "drizzle-orm";
 import { db, imagingRecordsTable, patientsTable } from "@workspace/db";
 import { ObjectStorageService } from "../lib/objectStorage";
 import {

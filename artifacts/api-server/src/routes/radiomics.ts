@@ -14,6 +14,7 @@ import { tmpdir } from "os";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const execFileAsync = promisify(execFile);
+const pythonBin = process.env.PYTHON_BIN || "python3.11";
 const storageService = new ObjectStorageService();
 
 const router: IRouter = Router();
@@ -287,34 +288,20 @@ router.post("/radiomics/extract/:imagingId", async (req, res): Promise<void> => 
   const maskPath = join(tmpDir, "mask.nii.gz");
 
   try {
-    const [imageSignedUrl, maskSignedUrl] = await Promise.all([
-      storageService.getObjectEntityDownloadURL(record.imageUrl, 300),
-      storageService.getObjectEntityDownloadURL(record.maskUrl, 300),
-    ]);
-
-    const [imageResp, maskResp] = await Promise.all([
-      fetch(imageSignedUrl),
-      fetch(maskSignedUrl),
-    ]);
-
-    if (!imageResp.ok || !maskResp.ok) {
-      throw new Error("Failed to download files from storage");
-    }
-
     const [imageBuffer, maskBuffer] = await Promise.all([
-      imageResp.arrayBuffer(),
-      maskResp.arrayBuffer(),
+      storageService.readObjectEntity(record.imageUrl),
+      storageService.readObjectEntity(record.maskUrl),
     ]);
 
     await Promise.all([
-      writeFile(imagePath, Buffer.from(imageBuffer)),
-      writeFile(maskPath, Buffer.from(maskBuffer)),
+      writeFile(imagePath, imageBuffer),
+      writeFile(maskPath, maskBuffer),
     ]);
 
     const scriptPath = join(process.cwd(), "extract_radiomics.py");
     let stdout: string;
     try {
-      ({ stdout } = await execFileAsync("python3.11", [scriptPath, imagePath, maskPath], {
+      ({ stdout } = await execFileAsync(pythonBin, [scriptPath, imagePath, maskPath], {
         timeout: 300_000,
         maxBuffer: 50 * 1024 * 1024,
       }));
