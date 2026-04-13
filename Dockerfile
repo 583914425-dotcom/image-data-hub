@@ -27,7 +27,7 @@ ENV BASE_PATH=/
 
 RUN corepack pnpm --filter @workspace/api-server run build
 RUN corepack pnpm --filter @workspace/medical-portal run build
-RUN pip3 install --no-cache-dir pyradiomics==3.0.1
+RUN pip3 install --break-system-packages --no-cache-dir pyradiomics==3.0.1
 
 RUN chmod +x /app/deploy/start-app.sh
 
